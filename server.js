@@ -34,7 +34,9 @@ function getPlayerList(room) {
   return room.players.map((player) => ({
     id: player.id,
     name: player.name,
-    isMuted: player.isMuted || false
+    score: player.score || 0,
+    isMuted: player.isMuted || false,
+    ready: player.ready || false
   }));
 }
 
@@ -55,7 +57,7 @@ io.on("connection", (socket) => {
     };
     rooms.set(roomCode, room);
 
-    const player = { id: socket.id, name: name.trim(), isMuted: false };
+    const player = { id: socket.id, name: name.trim(), score: 0, isMuted: false, ready: false };
     room.players.push(player);
 
     socket.join(roomCode);
@@ -78,7 +80,7 @@ io.on("connection", (socket) => {
     const alreadyName = room.players.some((p) => p.name.toLowerCase() === name.trim().toLowerCase());
     if (alreadyName) return callback({ success: false, message: "هذا الاسم مستخدم داخل الغرفة" });
 
-    const player = { id: socket.id, name: name.trim(), isMuted: false };
+    const player = { id: socket.id, name: name.trim(), score: 0, isMuted: false, ready: false };
     room.players.push(player);
 
     socket.join(code);
@@ -111,8 +113,9 @@ io.on("connection", (socket) => {
 
     room.started = true;
     room.votes.clear();
-    room.currentAnimal = animals[Math.floor(Math.random() * animals.length)];
+    room.players.forEach(p => p.ready = false);
     
+    room.currentAnimal = animals[Math.floor(Math.random() * animals.length)];
     const outsiderIndex = Math.floor(Math.random() * room.players.length);
     room.outsiderId = room.players[outsiderIndex].id;
 
@@ -131,7 +134,6 @@ io.on("connection", (socket) => {
     callback({ success: true });
   });
 
-  // بدء التصويت (خاص بالمالك)
   socket.on("start-voting-phase", ({ roomCode }) => {
     const room = rooms.get(roomCode);
     if (!room || socket.id !== room.host) return;
@@ -140,7 +142,6 @@ io.on("connection", (socket) => {
     io.to(roomCode).emit("vote:start");
   });
 
-  // استقبال الصوت
   socket.on("submit-vote", ({ roomCode, targetId }) => {
     const room = rooms.get(roomCode);
     if (!room || socket.isSpectator) return;
@@ -149,17 +150,14 @@ io.on("connection", (socket) => {
     const target = room.players.find(p => p.id === targetId);
 
     if (voter && target) {
-      room.votes.set(socket.id, { voterName: voter.name, targetName: target.name });
+      room.votes.set(socket.id, { voterName: voter.name, targetId: target.id, targetName: target.name });
 
-      // تحديث شريط أصوات الجانب لجميع اللاعبين والمشاهدين
       const votesList = Array.from(room.votes.values());
       io.to(roomCode).emit("vote:update-live", votesList);
 
-      // إذا صوت جميع اللاعبين، ننتقل للنتائج والتخمين
       if (room.votes.size === room.players.length) {
         const outsiderPlayer = room.players.find(p => p.id === room.outsiderId);
         
-        // تجهيز 5 خيارات عشوائية تحتوي الحيوان الصحيح
         let otherAnimals = animals.filter(a => a !== room.currentAnimal);
         otherAnimals.sort(() => 0.5 - Math.random());
         let choices = [room.currentAnimal, ...otherAnimals.slice(0, 4)];
@@ -174,20 +172,55 @@ io.on("connection", (socket) => {
     }
   });
 
-  // اختيارات التخمين النهائي من قبل برا السالفة
   socket.on("guess-animal", ({ roomCode, chosenAnimal }) => {
     const room = rooms.get(roomCode);
-    if (!room) return;
-
-    if (socket.id !== room.outsiderId) return; // للتأكد أن صاحب الاختيار هو فقط برا السالفة
+    if (!room || socket.id !== room.outsiderId) return;
 
     const isCorrect = (chosenAnimal === room.currentAnimal);
+
+    // حساب النقاط للجولة الحالية وتحديث المجموع
+    const roundSummary = room.players.map(p => {
+      let earned = 0;
+
+      if (p.id === room.outsiderId) {
+        // إذا كان برا السالفة وتخميته صح يوخذ 100
+        if (isCorrect) earned = 100;
+      } else {
+        // إذا كان لاعب عادي وصوت صح على برا السالفة يوخذ 100
+        const userVote = room.votes.get(p.id);
+        if (userVote && userVote.targetId === room.outsiderId) {
+          earned = 100;
+        }
+      }
+
+      p.score = (p.score || 0) + earned;
+
+      return {
+        id: p.id,
+        name: p.name,
+        earnedScore: earned,
+        totalScore: p.score
+      };
+    });
 
     io.to(roomCode).emit("guess:result", {
       chosenAnimal,
       correctAnimal: room.currentAnimal,
-      isCorrect
+      isCorrect,
+      roundSummary
     });
+  });
+
+  // إعادة الجولة والاستعداد
+  socket.on("player-ready", ({ roomCode }) => {
+    const room = rooms.get(roomCode);
+    if (!room) return;
+
+    const player = room.players.find(p => p.id === socket.id);
+    if (player) {
+      player.ready = true;
+      io.to(roomCode).emit("players:update", getPlayerList(room));
+    }
   });
 
   socket.on("toggle-mute", ({ roomCode, targetId, muteState }) => {
