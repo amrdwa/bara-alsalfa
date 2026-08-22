@@ -9,6 +9,9 @@ const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
 
+// 🔐 كلمة سر المالك لإنشاء الغرف
+const OWNER_PIN = "a********@#";
+
 app.use(express.static(path.join(__dirname, "public")));
 
 const rooms = new Map();
@@ -51,11 +54,18 @@ function getPlayerList(room) {
 io.on("connection", (socket) => {
   console.log("Player connected:", socket.id);
 
-  socket.on("create-room", ({ name }, callback) => {
+  socket.on("create-room", ({ name, pin }, callback) => {
     if (!name || !name.trim()) {
       return callback({
         success: false,
         message: "اكتب اسمك أولًا"
+      });
+    }
+
+    if (pin !== OWNER_PIN) {
+      return callback({
+        success: false,
+        message: "❌ عذراً، فقط المالك يستطيع إنشاء غرف جديدة!"
       });
     }
 
