@@ -14,7 +14,7 @@
       color: white;
     }
     .container {
-      width: min(92%, 500px);
+      width: min(92%, 520px);
       background: rgba(0, 0, 0, 0.55);
       border: 1px solid rgba(255,255,255,0.12);
       border-radius: 25px;
@@ -136,7 +136,6 @@
       border-bottom: 1px solid rgba(255,255,255,0.08);
     }
 
-    /* خيارات التصويت والتخمين Vertical list */
     .vertical-list {
       display: flex;
       flex-direction: column;
@@ -154,6 +153,27 @@
 
     .correct-btn { background: #10b981 !important; color: white !important; }
     .wrong-btn { background: #ef4444 !important; color: white !important; }
+
+    /* أنماط جدول النقاط والمتصدرين */
+    .score-card {
+      background: rgba(255, 255, 255, 0.08);
+      padding: 12px;
+      border-radius: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .score-badge {
+      background: #2563eb;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 13px;
+    }
+    .score-total {
+      color: #facc15;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -211,7 +231,6 @@
       <h3>👥 اللاعبين</h3>
       <div id="sidebarPlayers"></div>
 
-      <!-- مربع أين صوت اللاعبون -->
       <div class="votes-box">
         <strong>🗳️ التصويت الحقيقي:</strong>
         <div id="votesList">لم يبدأ التصويت بعد</div>
@@ -247,6 +266,19 @@
     <div id="animalChoices" class="vertical-list"></div>
   </div>
 
+  <!-- واجهة لوحة النقاط والمتصدرين الجديدة -->
+  <div class="container hidden" id="scoreScreen">
+    <h1>🏆 لوحة النقاط المتراكمة</h1>
+    <div id="scoreStatus" class="status"></div>
+
+    <div id="scoresList" style="margin: 20px 0;"></div>
+
+    <button id="readyNextBtn">✅ أكمل جولة ثانية</button>
+    
+    <!-- زر للمالك فقط لبدء الجولة بدون المنتظرين -->
+    <button id="hostForceStartBtn" class="vote-trigger-btn hidden" style="margin-top:10px;">⚡ بدء الجولة فوراً (تجاوز المتأخرين)</button>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
@@ -257,6 +289,7 @@
     const chatScreen = document.getElementById("chatScreen");
     const voteScreen = document.getElementById("voteScreen");
     const guessScreen = document.getElementById("guessScreen");
+    const scoreScreen = document.getElementById("scoreScreen");
 
     const nameInput = document.getElementById("nameInput");
     const pinInput = document.getElementById("pinInput");
@@ -298,6 +331,10 @@
     const outsiderRevealBanner = document.getElementById("outsiderRevealBanner");
     const guessStatus = document.getElementById("guessStatus");
 
+    const scoresList = document.getElementById("scoresList");
+    const readyNextBtn = document.getElementById("readyNextBtn");
+    const hostForceStartBtn = document.getElementById("hostForceStartBtn");
+
     let currentRoom = null;
     let isHost = false;
     let isSpectator = false;
@@ -310,6 +347,7 @@
       chatScreen.classList.add("hidden");
       voteScreen.classList.add("hidden");
       guessScreen.classList.add("hidden");
+      scoreScreen.classList.add("hidden");
       screen.classList.remove("hidden");
     }
 
@@ -343,6 +381,7 @@
         roomCode.textContent = currentRoom;
         hostControls.classList.remove("hidden");
         hostVoteBtn.classList.remove("hidden");
+        hostForceStartBtn.classList.remove("hidden");
         showScreen(lobby);
       });
     });
@@ -360,6 +399,7 @@
         if (isHost) {
           hostControls.classList.remove("hidden");
           hostVoteBtn.classList.remove("hidden");
+          hostForceStartBtn.classList.remove("hidden");
         }
         showScreen(lobby);
       });
@@ -386,7 +426,7 @@
       playerList.forEach((p) => {
         const div = document.createElement("div");
         div.className = "player";
-        div.textContent = "👤 " + p.name;
+        div.textContent = `👤 ${p.name} ${p.ready ? '✅ (جاهز)' : ''}`;
         players.appendChild(div);
 
         const sideDiv = document.createElement("div");
@@ -398,7 +438,7 @@
           </div>
         ` : "";
 
-        sideDiv.innerHTML = `<span>👤 ${p.name} ${p.isMuted ? '🔇' : ''}</span>` + controls;
+        sideDiv.innerHTML = `<span>👤 ${p.name} (نقاطه: ${p.score})</span>` + controls;
         sidebarPlayers.appendChild(sideDiv);
       });
     });
@@ -413,6 +453,12 @@
       });
     });
 
+    hostForceStartBtn.addEventListener("click", () => {
+      socket.emit("start-game", { roomCode: currentRoom }, (res) => {
+        if (!res.success) alert(res.message);
+      });
+    });
+
     socket.on("game:role", (data) => {
       if (data.role === "outsider") {
         roleBox.innerHTML = `🚨<br><strong>أنت برا السالفة</strong>`;
@@ -424,7 +470,6 @@
 
     hideRoleBtn.addEventListener("click", () => showScreen(chatScreen));
 
-    // بدء مرحلة التصويت عبر المالك
     hostVoteBtn.addEventListener("click", () => {
       socket.emit("start-voting-phase", { roomCode: currentRoom });
     });
@@ -436,7 +481,6 @@
       }
 
       voteOptions.innerHTML = "";
-      // تصفية القائمة لاستثناء الشخص نفسه
       const candidates = allPlayersList.filter(p => p.id !== socket.id);
 
       candidates.forEach(p => {
@@ -452,7 +496,6 @@
       showScreen(voteScreen);
     });
 
-    // تحديث الشاشة الجانبية بالأصوات مباشرة
     socket.on("vote:update-live", (votes) => {
       votesList.innerHTML = "";
       votes.forEach(v => {
@@ -463,7 +506,6 @@
       });
     });
 
-    // انتهاء التصويت وبدء التخمين للحيوان
     socket.on("vote:completed", ({ outsiderName, outsiderId, choices }) => {
       outsiderRevealBanner.innerHTML = `🚨 الشخص الذي كان برا السالفة هو: <strong>${outsiderName}</strong>`;
       animalChoices.innerHTML = "";
@@ -482,7 +524,7 @@
         btn.dataset.animal = animalName;
 
         if (!isMeOutsider) {
-          btn.disabled = true; // باقي اللاعبين مشاهدون فقط للحيوانات
+          btn.disabled = true;
         } else {
           btn.onclick = () => {
             socket.emit("guess-animal", { roomCode: currentRoom, chosenAnimal: animalName });
@@ -495,8 +537,8 @@
       showScreen(guessScreen);
     });
 
-    // إظهار نتيجة التخمين
-    socket.on("guess:result", ({ chosenAnimal, correctAnimal, isCorrect }) => {
+    // استقبال النتيجة وعرض جدول النقاط المتراكمة
+    socket.on("guess:result", ({ chosenAnimal, correctAnimal, isCorrect, roundSummary }) => {
       const buttons = animalChoices.querySelectorAll("button");
       buttons.forEach(btn => {
         btn.disabled = true;
@@ -505,11 +547,36 @@
         }
       });
 
-      if (isCorrect) {
-        guessStatus.innerHTML = `<span style="color:#10b981; font-weight:bold;">🎉 نعم! الاختيار صحيح: (${chosenAnimal})</span>`;
-      } else {
-        guessStatus.innerHTML = `<span style="color:#ef4444; font-weight:bold;">❌ اختيار خاطئ! الحيوان الصحيح هو: (${correctAnimal})</span>`;
-      }
+      // الانتقال لتصفح لوحة النقاط بعد ثانيتين لمشاهدة التخمين
+      setTimeout(() => {
+        scoresList.innerHTML = "";
+        
+        roundSummary.sort((a, b) => b.totalScore - a.totalScore); // ترتيب المتصدرين بالأعلى
+
+        roundSummary.forEach(p => {
+          const div = document.createElement("div");
+          div.className = "score-card";
+          div.innerHTML = `
+            <div>
+              <strong>👤 ${p.name}</strong>
+              <div style="font-size:12px; color:#cbd5e1;">نقاط هذه الجولة: +${p.earnedScore}</div>
+            </div>
+            <div class="score-badge">المجموع: <span class="score-total">${p.totalScore}</span></div>
+          `;
+          scoresList.appendChild(div);
+        });
+
+        readyNextBtn.disabled = false;
+        readyNextBtn.textContent = "✅ أكمل جولة ثانية";
+
+        showScreen(scoreScreen);
+      }, 2500);
+    });
+
+    readyNextBtn.addEventListener("click", () => {
+      socket.emit("player-ready", { roomCode: currentRoom });
+      readyNextBtn.disabled = true;
+      readyNextBtn.textContent = "⏳ بانتظار بقية اللاعبين والمالك...";
     });
 
     function sendMessage() {
