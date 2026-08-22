@@ -45,6 +45,8 @@
     button:hover { background: #4752c4; }
     .secondary { background: #374151; }
     .secondary:hover { background: #4b5563; }
+    .spectate-btn { background: #059669; }
+    .spectate-btn:hover { background: #047857; }
     .hidden { display: none !important; }
     .room-code { font-size: 42px; font-weight: bold; letter-spacing: 8px; color: #60a5fa; margin: 20px 0; }
     .players { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
@@ -55,7 +57,6 @@
     .error { color: #f87171; margin-top: 15px; }
     .box-container { margin-top: 15px; padding: 15px; background: rgba(255, 255, 255, 0.05); border-radius: 15px; }
 
-    /* أنماط الشات واللوحة الجانبية */
     .chat-main { flex: 2; }
     .sidebar { flex: 1; text-align: right; }
     
@@ -72,7 +73,6 @@
       margin-bottom: 15px;
     }
 
-    /* رسائل الآخرين (يمين) */
     .chat-msg {
       align-self: flex-start;
       max-width: 80%;
@@ -91,7 +91,6 @@
       display: block;
     }
 
-    /* رسائلك الشخصية للمالك أو أي لاعب (يسار وباللون الأزرق) */
     .chat-msg.my-msg {
       align-self: flex-end;
       background: #2563eb;
@@ -129,6 +128,15 @@
     .btn-mute { background: #ef4444; }
     .btn-mute:hover { background: #dc2626; }
     .muted-badge { color: #ef4444; font-size: 12px; font-weight: bold; }
+    
+    .spectator-banner {
+      background: #059669;
+      color: white;
+      padding: 10px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -152,7 +160,15 @@
 
     <div id="joinBox" class="box-container hidden">
       <input id="roomInput" type="text" placeholder="كود الغرفة" maxlength="4">
-      <button id="joinBtn">دخول</button>
+      <button id="joinBtn">دخول كـ لاعب</button>
+    </div>
+
+    <!-- خيار المشاهدة الجديد -->
+    <button id="showSpectateBtn" class="spectate-btn">👁️ مشاهدة لعبة</button>
+
+    <div id="spectateBox" class="box-container hidden">
+      <input id="spectateRoomInput" type="text" placeholder="كود اللعبة للمشاهدة" maxlength="4">
+      <button id="spectateBtn" class="spectate-btn">دخول للمشاهدة 👁️</button>
     </div>
 
     <div id="homeMessage" class="error"></div>
@@ -184,20 +200,19 @@
 
   <!-- شاشة المحادثة والتحكم -->
   <div class="container chat-layout hidden" id="chatScreen">
-    <!-- مربع التحكم واللاعبين (الجانبي) -->
     <div class="sidebar">
       <h3>👥 قائمة اللاعبين</h3>
       <div id="sidebarPlayers"></div>
     </div>
 
-    <!-- مربع المحادثة الرئيسي -->
     <div class="chat-main">
       <h1>💬 المحادثة</h1>
-      <div class="status">تناقشوا واكتشفوا مين برا السالفة!</div>
+      <div id="spectatorBanner" class="spectator-banner hidden">👁️ أنت الآن في وضع المشاهدة فقط</div>
+      <div class="status" id="chatStatus">تناقشوا واكتشفوا مين برا السالفة!</div>
 
       <div id="chatBox" class="chat-box"></div>
 
-      <div class="chat-input-container">
+      <div class="chat-input-container" id="chatInputArea">
         <input id="msgInput" type="text" placeholder="اكتب رسالتك..." maxlength="100">
         <button id="sendMsgBtn">إرسال</button>
       </div>
@@ -226,6 +241,11 @@
     const joinBox = document.getElementById("joinBox");
     const joinBtn = document.getElementById("joinBtn");
 
+    const showSpectateBtn = document.getElementById("showSpectateBtn");
+    const spectateBox = document.getElementById("spectateBox");
+    const spectateRoomInput = document.getElementById("spectateRoomInput");
+    const spectateBtn = document.getElementById("spectateBtn");
+
     const startBtn = document.getElementById("startBtn");
     const players = document.getElementById("players");
     const roomCode = document.getElementById("roomCode");
@@ -241,9 +261,12 @@
     const sendMsgBtn = document.getElementById("sendMsgBtn");
     const chatError = document.getElementById("chatError");
     const sidebarPlayers = document.getElementById("sidebarPlayers");
+    const chatInputArea = document.getElementById("chatInputArea");
+    const spectatorBanner = document.getElementById("spectatorBanner");
 
     let currentRoom = null;
     let isHost = false;
+    let isSpectator = false;
 
     function showScreen(screen) {
       home.classList.add("hidden");
@@ -255,12 +278,20 @@
 
     showCreateBtn.addEventListener("click", () => {
       joinBox.classList.add("hidden");
+      spectateBox.classList.add("hidden");
       createBox.classList.toggle("hidden");
     });
 
     showJoinBtn.addEventListener("click", () => {
       createBox.classList.add("hidden");
+      spectateBox.classList.add("hidden");
       joinBox.classList.toggle("hidden");
+    });
+
+    showSpectateBtn.addEventListener("click", () => {
+      createBox.classList.add("hidden");
+      joinBox.classList.add("hidden");
+      spectateBox.classList.toggle("hidden");
     });
 
     createBtn.addEventListener("click", () => {
@@ -296,6 +327,26 @@
         roomCode.textContent = currentRoom;
         if (isHost) hostControls.classList.remove("hidden");
         showScreen(lobby);
+      });
+    });
+
+    // حدث زر المشاهدة
+    spectateBtn.addEventListener("click", () => {
+      homeMessage.textContent = "";
+      const code = spectateRoomInput.value.trim();
+
+      if (!code) return homeMessage.textContent = "ادخل كود اللعبة للمشاهدة";
+
+      socket.emit("spectate-room", { roomCode: code }, (response) => {
+        if (!response.success) return homeMessage.textContent = response.message;
+        currentRoom = response.roomCode;
+        isSpectator = true;
+        
+        // إخفاء صندوق الإرسال وإظهار بنر المشاهدة
+        chatInputArea.classList.add("hidden");
+        spectatorBanner.classList.remove("hidden");
+
+        showScreen(chatScreen);
       });
     });
 
@@ -353,6 +404,7 @@
     });
 
     function sendMessage() {
+      if (isSpectator) return;
       chatError.textContent = "";
       const text = msgInput.value.trim();
       if (!text) return;
@@ -371,7 +423,6 @@
       if (e.key === "Enter") sendMessage();
     });
 
-    // استقبال الرسائل وفحص socket.id المباشر لإظهار لون الرسالة الأزرق ومحاذاتها
     socket.on("chat:message", (data) => {
       const msgDiv = document.createElement("div");
       const isMe = (data.senderId === socket.id);
