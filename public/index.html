@@ -174,6 +174,13 @@
 
       margin-top: 15px;
     }
+
+    .box-container {
+      margin-top: 15px;
+      padding: 15px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 15px;
+    }
   </style>
 </head>
 
@@ -198,9 +205,21 @@
       maxlength="20"
     >
 
-    <button id="createBtn">
+    <button id="showCreateBtn">
       🏠 إنشاء غرفة
     </button>
+
+    <!-- صندوق إدخال كلمة سر المالك المميز داخل الواجهة -->
+    <div id="createBox" class="box-container hidden">
+      <input
+        id="pinInput"
+        type="password"
+        placeholder="🔐 كلمة سر المالك"
+      >
+      <button id="createBtn">
+        تأكيد وإنشاء الغرفة
+      </button>
+    </div>
 
     <button
       id="showJoinBtn"
@@ -211,7 +230,7 @@
 
     <div
       id="joinBox"
-      class="hidden"
+      class="box-container hidden"
     >
 
       <input
@@ -344,8 +363,17 @@
     const nameInput =
       document.getElementById("nameInput");
 
+    const pinInput =
+      document.getElementById("pinInput");
+
     const roomInput =
       document.getElementById("roomInput");
+
+    const showCreateBtn =
+      document.getElementById("showCreateBtn");
+
+    const createBox =
+      document.getElementById("createBox");
 
     const createBtn =
       document.getElementById("createBtn");
@@ -404,30 +432,49 @@
     }
 
 
+    // إظهار وإخفاء حقل كلمة سر المالك
+    showCreateBtn.addEventListener("click", () => {
+
+      joinBox.classList.add("hidden");
+
+      createBox.classList.toggle("hidden");
+
+    });
+
+
     showJoinBtn.addEventListener("click", () => {
+
+      createBox.classList.add("hidden");
 
       joinBox.classList.toggle("hidden");
 
     });
 
 
+    // زر إنشاء الغرفة الداخلي
     createBtn.addEventListener("click", () => {
 
-      const name =
-        nameInput.value.trim();
+      homeMessage.textContent = "";
+
+      const name = nameInput.value.trim();
+
+      const pin = pinInput.value.trim();
 
       if (!name) {
 
-        homeMessage.textContent =
-          "اكتب اسمك أولًا";
+        homeMessage.textContent = "اكتب اسمك أولًا";
 
         return;
 
       }
 
-      const pin = prompt("🔐 أدخل كلمة سر المالك لإنشاء الغرفة:");
+      if (!pin) {
 
-      if (!pin) return;
+        homeMessage.textContent = "أدخل كلمة سر المالك";
+
+        return;
+
+      }
 
       socket.emit(
         "create-room",
@@ -437,25 +484,20 @@
 
           if (!response.success) {
 
-            homeMessage.textContent =
-              response.message;
+            // إظهار كلمة الخطأ تحت الحقل مباشرة في حال كانت كلمة السر خاطئة
+            homeMessage.textContent = response.message;
 
             return;
 
           }
 
-          currentRoom =
-            response.roomCode;
+          currentRoom = response.roomCode;
 
-          isHost =
-            response.isHost;
+          isHost = response.isHost;
 
-          roomCode.textContent =
-            currentRoom;
+          roomCode.textContent = currentRoom;
 
-          hostControls.classList.remove(
-            "hidden"
-          );
+          hostControls.classList.remove("hidden");
 
           showScreen(lobby);
 
@@ -467,16 +509,15 @@
 
     joinBtn.addEventListener("click", () => {
 
-      const name =
-        nameInput.value.trim();
+      homeMessage.textContent = "";
 
-      const code =
-        roomInput.value.trim();
+      const name = nameInput.value.trim();
+
+      const code = roomInput.value.trim();
 
       if (!name) {
 
-        homeMessage.textContent =
-          "اكتب اسمك أولًا";
+        homeMessage.textContent = "اكتب اسمك أولًا";
 
         return;
 
@@ -484,8 +525,7 @@
 
       if (!code) {
 
-        homeMessage.textContent =
-          "اكتب كود الغرفة";
+        homeMessage.textContent = "اكتب كود الغرفة";
 
         return;
 
@@ -502,27 +542,21 @@
 
           if (!response.success) {
 
-            homeMessage.textContent =
-              response.message;
+            homeMessage.textContent = response.message;
 
             return;
 
           }
 
-          currentRoom =
-            response.roomCode;
+          currentRoom = response.roomCode;
 
-          isHost =
-            response.isHost;
+          isHost = response.isHost;
 
-          roomCode.textContent =
-            currentRoom;
+          roomCode.textContent = currentRoom;
 
           if (isHost) {
 
-            hostControls.classList.remove(
-              "hidden"
-            );
+            hostControls.classList.remove("hidden");
 
           }
 
@@ -543,14 +577,11 @@
         playerList.forEach(
           (player) => {
 
-            const div =
-              document.createElement("div");
+            const div = document.createElement("div");
 
-            div.className =
-              "player";
+            div.className = "player";
 
-            div.textContent =
-              "👤 " + player.name;
+            div.textContent = "👤 " + player.name;
 
             players.appendChild(div);
 
@@ -573,8 +604,7 @@
 
           if (!response.success) {
 
-            lobbyMessage.textContent =
-              response.message;
+            lobbyMessage.textContent = response.message;
 
           }
 
@@ -617,9 +647,7 @@
       "game:started",
       () => {
 
-        console.log(
-          "Game started"
-        );
+        console.log("Game started");
 
       }
     );
