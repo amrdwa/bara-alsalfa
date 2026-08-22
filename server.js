@@ -17,44 +17,18 @@ app.use(express.static(path.join(__dirname, "public")));
 const rooms = new Map();
 
 const animals = [
-  "🐱 قطة",
-  "🐶 كلب",
-  "🦁 أسد",
-  "🐯 نمر",
-  "🐰 أرنب",
-  "🐼 باندا",
-  "🐨 كوالا",
-  "🦊 ثعلب",
-  "🐵 قرد",
-  "🐸 ضفدع",
-  "🐘 فيل",
-  "🦒 زرافة",
-  "🐧 بطريق",
-  "🐢 سلحفاة",
-  "🦓 حمار وحشي",
-  "🦅 صقر",
-  "🐦 عصفور",
-  "🐊 تمساح",
-  "🦅 نسر",
-  "🦉 بومة",
-  "🐺 ذئب",
-  "🦏 خرتيت",
-  "🦛 فرس النهر",
-  "🦘 كنجر",
-  "🐪 جمل",
-  "🐴 حصان",
-  "🐬 دلفين",
-  "🦈 قرش",
-  "🦚 طاووس"
+  "🐱 قطة", "🐶 كلب", "🦁 أسد", "🐯 نمر", "🐰 أرنب", "🐼 باندا", "🐨 كوالا",
+  "🦊 ثعلب", "🐵 قرد", "🐸 ضفدع", "🐘 فيل", "🦒 زرافة", "🐧 بطريق", "🐢 سلحفاة",
+  "🦓 حمار وحشي", "🦅 صقر", "🐦 عصفور", "🐊 تمساح", "🦅 نسر", "🦉 بومة",
+  "🐺 ذئب", "🦏 خرتيت", "🦛 فرس النهر", "🦘 كنجر", "🐪 جمل", "🐴 حصان",
+  "🐬 دلفين", "🦈 قرش", "🦚 طاووس"
 ];
 
 function generateRoomCode() {
   let code;
-
   do {
     code = Math.floor(1000 + Math.random() * 9000).toString();
   } while (rooms.has(code));
-
   return code;
 }
 
@@ -70,198 +44,113 @@ io.on("connection", (socket) => {
 
   socket.on("create-room", ({ name, pin }, callback) => {
     if (!name || !name.trim()) {
-      return callback({
-        success: false,
-        message: "اكتب اسمك أولًا"
-      });
+      return callback({ success: false, message: "اكتب اسمك أولًا" });
     }
 
     if (pin !== OWNER_PIN) {
-      return callback({
-        success: false,
-        message: "❌ عذراً، فقط المالك يستطيع إنشاء غرف جديدة!"
-      });
+      return callback({ success: false, message: "❌ عذراً، فقط المالك يستطيع إنشاء غرف جديدة!" });
     }
 
     const roomCode = generateRoomCode();
-
-    const room = {
-      host: socket.id,
-      players: [],
-      started: false
-    };
-
+    const room = { host: socket.id, players: [], started: false };
     rooms.set(roomCode, room);
 
-    const player = {
-      id: socket.id,
-      name: name.trim()
-    };
-
+    const player = { id: socket.id, name: name.trim() };
     room.players.push(player);
 
     socket.join(roomCode);
-
     socket.roomCode = roomCode;
 
-    callback({
-      success: true,
-      roomCode,
-      isHost: true
-    });
-
-    io.to(roomCode).emit(
-      "players:update",
-      getPlayerList(room)
-    );
+    callback({ success: true, roomCode, isHost: true });
+    io.to(roomCode).emit("players:update", getPlayerList(room));
   });
 
   socket.on("join-room", ({ name, roomCode }, callback) => {
-    console.log("Join attempt:", name, roomCode);
     if (!name || !name.trim()) {
-      return callback({
-        success: false,
-        message: "اكتب اسمك أولًا"
-      });
+      return callback({ success: false, message: "اكتب اسمك أولًا" });
     }
 
     const code = String(roomCode).trim();
-
     const room = rooms.get(code);
 
-    if (!room) {
-      return callback({
-        success: false,
-        message: "الغرفة غير موجودة"
-      });
-    }
-
-    if (room.started) {
-      return callback({
-        success: false,
-        message: "اللعبة بدأت بالفعل"
-      });
-    }
-
+    if (!room) return callback({ success: false, message: "الغرفة غير موجودة" });
+    if (room.started) return callback({ success: false, message: "اللعبة بدأت بالفعل" });
     if (room.players.length >= 7) {
-      return callback({
-        success: false,
-        message: "الغرفة ممتلئة (الحد الأقصى 7 لاعبين)"
-      });
+      return callback({ success: false, message: "الغرفة ممتلئة (الحد الأقصى 7 لاعبين)" });
     }
 
     const alreadyName = room.players.some(
-      (player) =>
-        player.name.toLowerCase() === name.trim().toLowerCase()
+      (p) => p.name.toLowerCase() === name.trim().toLowerCase()
     );
+    if (alreadyName) return callback({ success: false, message: "هذا الاسم مستخدم داخل الغرفة" });
 
-    if (alreadyName) {
-      return callback({
-        success: false,
-        message: "هذا الاسم مستخدم داخل الغرفة"
-      });
-    }
-
-    const player = {
-      id: socket.id,
-      name: name.trim()
-    };
-
+    const player = { id: socket.id, name: name.trim() };
     room.players.push(player);
 
     socket.join(code);
-
     socket.roomCode = code;
 
-    callback({
-      success: true,
-      roomCode: code,
-      isHost: socket.id === room.host
-    });
-
-    io.to(code).emit(
-      "players:update",
-      getPlayerList(room)
-    );
+    callback({ success: true, roomCode: code, isHost: socket.id === room.host });
+    io.to(code).emit("players:update", getPlayerList(room));
   });
 
   socket.on("start-game", ({ roomCode }, callback) => {
     const room = rooms.get(roomCode);
 
-    if (!room) {
-      return callback({
-        success: false,
-        message: "الغرفة غير موجودة"
-      });
-    }
-
+    if (!room) return callback({ success: false, message: "الغرفة غير موجودة" });
     if (socket.id !== room.host) {
-      return callback({
-        success: false,
-        message: "فقط صاحب الغرفة يستطيع بدء اللعبة"
-      });
+      return callback({ success: false, message: "فقط صاحب الغرفة يستطيع بدء اللعبة" });
     }
 
     if (room.players.length < 3) {
-      return callback({
-        success: false,
-        message: "لازم يكون في 3 لاعبين على الأقل"
-      });
+      return callback({ success: false, message: "لازم يكون في 3 لاعبين على الأقل" });
     }
 
     if (room.players.length > 7) {
-      return callback({
-        success: false,
-        message: "الحد الأقصى للعب هو 7 لاعبين فقط"
-      });
+      return callback({ success: false, message: "الحد الأقصى للعب هو 7 لاعبين فقط" });
     }
 
     room.started = true;
-
-    const animal =
-      animals[Math.floor(Math.random() * animals.length)];
-
-    const outsiderIndex =
-      Math.floor(Math.random() * room.players.length);
+    const animal = animals[Math.floor(Math.random() * animals.length)];
+    const outsiderIndex = Math.floor(Math.random() * room.players.length);
 
     room.players.forEach((player, index) => {
       const targetSocket = io.sockets.sockets.get(player.id);
-
       if (!targetSocket) return;
 
       if (index === outsiderIndex) {
-        targetSocket.emit("game:role", {
-          role: "outsider"
-        });
+        targetSocket.emit("game:role", { role: "outsider" });
       } else {
-        targetSocket.emit("game:role", {
-          role: "animal",
-          animal
-        });
+        targetSocket.emit("game:role", { role: "animal", animal });
       }
     });
 
     io.to(roomCode).emit("game:started");
+    callback({ success: true });
+  });
 
-    callback({
-      success: true
+  // حدث الشات
+  socket.on("send-message", ({ roomCode, message }) => {
+    const room = rooms.get(roomCode);
+    if (!room) return;
+
+    const player = room.players.find((p) => p.id === socket.id);
+    if (!player) return;
+
+    io.to(roomCode).emit("chat:message", {
+      sender: player.name,
+      message: message.trim()
     });
   });
 
   socket.on("disconnect", () => {
-    console.log("Player disconnected:", socket.id);
-
     const roomCode = socket.roomCode;
-
     if (!roomCode) return;
 
     const room = rooms.get(roomCode);
-
     if (!room) return;
 
-    room.players = room.players.filter(
-      (player) => player.id !== socket.id
-    );
+    room.players = room.players.filter((p) => p.id !== socket.id);
 
     if (room.players.length === 0) {
       rooms.delete(roomCode);
@@ -272,17 +161,12 @@ io.on("connection", (socket) => {
       room.host = room.players[0].id;
     }
 
-    io.to(roomCode).emit(
-      "players:update",
-      getPlayerList(room)
-    );
+    io.to(roomCode).emit("players:update", getPlayerList(room));
   });
 });
 
 app.get("*", (req, res) => {
-  res.sendFile(
-    path.join(__dirname, "public", "index.html")
-  );
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 server.listen(PORT, "0.0.0.0", () => {
