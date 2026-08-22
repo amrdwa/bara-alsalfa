@@ -55,7 +55,7 @@
     .error { color: #f87171; margin-top: 15px; }
     .box-container { margin-top: 15px; padding: 15px; background: rgba(255, 255, 255, 0.05); border-radius: 15px; }
 
-    /* أنماط الشات واللوحة الجانبية المحدثة */
+    /* أنماط الشات واللوحة الجانبية */
     .chat-main { flex: 2; }
     .sidebar { flex: 1; text-align: right; }
     
@@ -72,7 +72,7 @@
       margin-bottom: 15px;
     }
 
-    /* رسائل الآخرين (على اليمين بخلفية داكنة) */
+    /* رسائل الآخرين (يمين) */
     .chat-msg {
       align-self: flex-start;
       max-width: 80%;
@@ -91,7 +91,7 @@
       display: block;
     }
 
-    /* رسائلك الشخصية (على اليسار بلون أزرق مميز) */
+    /* رسائلك الشخصية للمالك أو أي لاعب (يسار وباللون الأزرق) */
     .chat-msg.my-msg {
       align-self: flex-end;
       background: #2563eb;
@@ -244,11 +244,6 @@
 
     let currentRoom = null;
     let isHost = false;
-    let myPlayerId = null;
-
-    socket.on("connect", () => {
-      myPlayerId = socket.id;
-    });
 
     function showScreen(screen) {
       home.classList.add("hidden");
@@ -376,7 +371,7 @@
       if (e.key === "Enter") sendMessage();
     });
 
-    // استقبال الرسائل وتحديد مكانها ولونها بناءً على صاحب الرسالة
+    // استقبال الرسائل وفحص socket.id المباشر لإظهار لون الرسالة الأزرق ومحاذاتها
     socket.on("chat:message", (data) => {
       const msgDiv = document.createElement("div");
       const isMe = (data.senderId === socket.id);
