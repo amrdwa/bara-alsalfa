@@ -53,7 +53,7 @@ io.on("connection", (socket) => {
     }
 
     const roomCode = generateRoomCode();
-    const room = { host: socket.id, players: [], started: false };
+    const room = { host: socket.id, players: [], spectators: [], started: false };
     rooms.set(roomCode, room);
 
     const player = { id: socket.id, name: name.trim(), isMuted: false };
@@ -95,6 +95,25 @@ io.on("connection", (socket) => {
     io.to(code).emit("players:update", getPlayerList(room));
   });
 
+  // دخول المشاهدين (بدون حد أقصى)
+  socket.on("spectate-room", ({ roomCode }, callback) => {
+    const code = String(roomCode).trim();
+    const room = rooms.get(code);
+
+    if (!room) return callback({ success: false, message: "الغرفة غير موجودة" });
+
+    socket.join(code);
+    socket.roomCode = code;
+    socket.isSpectator = true;
+
+    if (!room.spectators) room.spectators = [];
+    room.spectators.push(socket.id);
+
+    callback({ success: true, roomCode: code });
+    // إرسال قائمة اللاعبين الحالية للمشاهد
+    socket.emit("players:update", getPlayerList(room));
+  });
+
   socket.on("start-game", ({ roomCode }, callback) => {
     const room = rooms.get(roomCode);
 
@@ -130,12 +149,11 @@ io.on("connection", (socket) => {
     callback({ success: true });
   });
 
-  // التحكم بالكتم والسماح (خاص بالمالك)
   socket.on("toggle-mute", ({ roomCode, targetId, muteState }) => {
     const room = rooms.get(roomCode);
     if (!room) return;
 
-    if (socket.id !== room.host) return; // للتحقق أن المرسل هو المالك
+    if (socket.id !== room.host) return;
 
     const player = room.players.find((p) => p.id === targetId);
     if (player) {
@@ -144,10 +162,17 @@ io.on("connection", (socket) => {
     }
   });
 
-  // حدث الشات مع فحص الكتم وتمرير senderId لتمييز رسائل كل لاعب
   socket.on("send-message", ({ roomCode, message }, callback) => {
     const room = rooms.get(roomCode);
     if (!room) return;
+
+    // رفض الرسائل إذا كان المستخدم مشاهدًا
+    if (socket.isSpectator) {
+      if (typeof callback === "function") {
+        return callback({ success: false, message: "❌ المشاهدون لا يمكنهم الكتابة في الشات!" });
+      }
+      return;
+    }
 
     const player = room.players.find((p) => p.id === socket.id);
     if (!player) return;
@@ -160,7 +185,7 @@ io.on("connection", (socket) => {
     }
 
     io.to(roomCode).emit("chat:message", {
-      senderId: socket.id, // تم تضمين معرّف المرسل هنا لتمييز الرسائل
+      senderId: socket.id,
       sender: player.name,
       message: message.trim()
     });
@@ -177,14 +202,19 @@ io.on("connection", (socket) => {
     const room = rooms.get(roomCode);
     if (!room) return;
 
+    if (socket.isSpectator) {
+      room.spectators = (room.spectators || []).filter((id) => id !== socket.id);
+      return;
+    }
+
     room.players = room.players.filter((p) => p.id !== socket.id);
 
-    if (room.players.length === 0) {
+    if (room.players.length === 0 && (!room.spectators || room.spectators.length === 0)) {
       rooms.delete(roomCode);
       return;
     }
 
-    if (room.host === socket.id) {
+    if (room.host === socket.id && room.players.length > 0) {
       room.host = room.players[0].id;
     }
 
