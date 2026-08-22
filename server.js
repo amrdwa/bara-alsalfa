@@ -93,6 +93,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("join-room", ({ name, roomCode }, callback) => {
+    console.log("Join attempt:", name, roomCode);
     if (!name || !name.trim()) {
       return callback({
         success: false,
