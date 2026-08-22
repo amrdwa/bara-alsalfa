@@ -55,31 +55,53 @@
     .error { color: #f87171; margin-top: 15px; }
     .box-container { margin-top: 15px; padding: 15px; background: rgba(255, 255, 255, 0.05); border-radius: 15px; }
 
-    /* أنماط الشات واللوحة الجانبية */
+    /* أنماط الشات واللوحة الجانبية المحدثة */
     .chat-main { flex: 2; }
     .sidebar { flex: 1; text-align: right; }
     
     .chat-box {
-      height: 320px;
+      height: 350px;
       overflow-y: auto;
-      background: rgba(0, 0, 0, 0.3);
+      background: rgba(0, 0, 0, 0.35);
       border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 15px;
       padding: 15px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      text-align: right;
+      gap: 12px;
       margin-bottom: 15px;
     }
+
+    /* رسائل الآخرين (على اليمين بخلفية داكنة) */
     .chat-msg {
-      background: rgba(255, 255, 255, 0.1);
+      align-self: flex-start;
+      max-width: 80%;
+      background: rgba(255, 255, 255, 0.12);
       padding: 10px 14px;
-      border-radius: 12px;
+      border-radius: 15px 15px 15px 2px;
       word-break: break-word;
       font-size: 15px;
+      text-align: right;
     }
-    .chat-msg span { font-weight: bold; color: #60a5fa; margin-left: 5px; }
+    .chat-msg .sender-name {
+      font-weight: bold;
+      color: #60a5fa;
+      font-size: 13px;
+      margin-bottom: 3px;
+      display: block;
+    }
+
+    /* رسائلك الشخصية (على اليسار بلون أزرق مميز) */
+    .chat-msg.my-msg {
+      align-self: flex-end;
+      background: #2563eb;
+      border-radius: 15px 15px 2px 15px;
+      text-align: left;
+    }
+    .chat-msg.my-msg .sender-name {
+      color: #93c5fd;
+    }
+
     .chat-input-container { display: flex; gap: 10px; }
     .chat-input-container input { margin-bottom: 0; text-align: right; }
     .chat-input-container button { margin-top: 0; width: 100px; flex-shrink: 0; }
@@ -222,6 +244,11 @@
 
     let currentRoom = null;
     let isHost = false;
+    let myPlayerId = null;
+
+    socket.on("connect", () => {
+      myPlayerId = socket.id;
+    });
 
     function showScreen(screen) {
       home.classList.add("hidden");
@@ -282,13 +309,11 @@
       sidebarPlayers.innerHTML = "";
 
       playerList.forEach((player) => {
-        // تحديث القائمة في اللوبي
         const div = document.createElement("div");
         div.className = "player";
         div.textContent = "👤 " + player.name;
         players.appendChild(div);
 
-        // تحديث القائمة الجانبية في الشات
         const sideDiv = document.createElement("div");
         sideDiv.className = "sidebar-player";
         
@@ -351,10 +376,18 @@
       if (e.key === "Enter") sendMessage();
     });
 
+    // استقبال الرسائل وتحديد مكانها ولونها بناءً على صاحب الرسالة
     socket.on("chat:message", (data) => {
       const msgDiv = document.createElement("div");
-      msgDiv.className = "chat-msg";
-      msgDiv.innerHTML = `<span>${data.sender}:</span> ${data.message}`;
+      const isMe = (data.senderId === socket.id);
+
+      msgDiv.className = isMe ? "chat-msg my-msg" : "chat-msg";
+      
+      msgDiv.innerHTML = `
+        <span class="sender-name">${isMe ? "أنت" : data.sender}</span>
+        <div>${data.message}</div>
+      `;
+
       chatBox.appendChild(msgDiv);
       chatBox.scrollTop = chatBox.scrollHeight;
     });
