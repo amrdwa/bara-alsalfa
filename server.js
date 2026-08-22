@@ -35,7 +35,8 @@ function generateRoomCode() {
 function getPlayerList(room) {
   return room.players.map((player) => ({
     id: player.id,
-    name: player.name
+    name: player.name,
+    isMuted: player.isMuted || false
   }));
 }
 
@@ -55,7 +56,7 @@ io.on("connection", (socket) => {
     const room = { host: socket.id, players: [], started: false };
     rooms.set(roomCode, room);
 
-    const player = { id: socket.id, name: name.trim() };
+    const player = { id: socket.id, name: name.trim(), isMuted: false };
     room.players.push(player);
 
     socket.join(roomCode);
@@ -84,7 +85,7 @@ io.on("connection", (socket) => {
     );
     if (alreadyName) return callback({ success: false, message: "هذا الاسم مستخدم داخل الغرفة" });
 
-    const player = { id: socket.id, name: name.trim() };
+    const player = { id: socket.id, name: name.trim(), isMuted: false };
     room.players.push(player);
 
     socket.join(code);
@@ -129,18 +130,43 @@ io.on("connection", (socket) => {
     callback({ success: true });
   });
 
-  // حدث الشات
-  socket.on("send-message", ({ roomCode, message }) => {
+  // التحكم بالكتم والسماح (خاص بالمالك)
+  socket.on("toggle-mute", ({ roomCode, targetId, muteState }) => {
+    const room = rooms.get(roomCode);
+    if (!room) return;
+
+    if (socket.id !== room.host) return; // للتحقق أن المرسل هو المالك
+
+    const player = room.players.find((p) => p.id === targetId);
+    if (player) {
+      player.isMuted = muteState;
+      io.to(roomCode).emit("players:update", getPlayerList(room));
+    }
+  });
+
+  // حدث الشات مع فحص الكتم
+  socket.on("send-message", ({ roomCode, message }, callback) => {
     const room = rooms.get(roomCode);
     if (!room) return;
 
     const player = room.players.find((p) => p.id === socket.id);
     if (!player) return;
 
+    if (player.isMuted) {
+      if (typeof callback === "function") {
+        return callback({ success: false, message: "❌ أنت مكتوم حالياً من قبل المالك!" });
+      }
+      return;
+    }
+
     io.to(roomCode).emit("chat:message", {
       sender: player.name,
       message: message.trim()
     });
+
+    if (typeof callback === "function") {
+      callback({ success: true });
+    }
   });
 
   socket.on("disconnect", () => {
