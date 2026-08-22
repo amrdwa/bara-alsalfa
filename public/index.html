@@ -22,8 +22,16 @@
       text-align: center;
       box-shadow: 0 20px 60px rgba(0,0,0,0.5);
     }
-    h1 { font-size: 42px; margin: 0 0 10px; }
-    .subtitle { color: #cbd5e1; margin-bottom: 30px; }
+    .chat-layout {
+      width: min(95%, 850px);
+      display: flex;
+      gap: 20px;
+    }
+    @media (max-width: 768px) {
+      .chat-layout { flex-direction: column; }
+    }
+    h1 { font-size: 38px; margin: 0 0 10px; }
+    .subtitle { color: #cbd5e1; margin-bottom: 25px; }
     input {
       width: 100%; padding: 15px; border-radius: 12px;
       border: none; outline: none; font-size: 18px;
@@ -37,19 +45,22 @@
     button:hover { background: #4752c4; }
     .secondary { background: #374151; }
     .secondary:hover { background: #4b5563; }
-    .hidden { display: none; }
+    .hidden { display: none !important; }
     .room-code { font-size: 42px; font-weight: bold; letter-spacing: 8px; color: #60a5fa; margin: 20px 0; }
     .players { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
     .player { padding: 12px; background: rgba(255,255,255,0.08); border-radius: 10px; }
-    .status { margin: 20px 0; color: #cbd5e1; }
+    .status { margin: 15px 0; color: #cbd5e1; }
     .role { font-size: 28px; margin: 25px 0; padding: 25px; border-radius: 20px; background: rgba(255,255,255,0.08); }
     .animal { font-size: 48px; margin-top: 15px; }
     .error { color: #f87171; margin-top: 15px; }
     .box-container { margin-top: 15px; padding: 15px; background: rgba(255, 255, 255, 0.05); border-radius: 15px; }
 
-    /* أنماط الشات الجديد */
+    /* أنماط الشات واللوحة الجانبية */
+    .chat-main { flex: 2; }
+    .sidebar { flex: 1; text-align: right; }
+    
     .chat-box {
-      height: 280px;
+      height: 320px;
       overflow-y: auto;
       background: rgba(0, 0, 0, 0.3);
       border: 1px solid rgba(255, 255, 255, 0.1);
@@ -63,29 +74,39 @@
     }
     .chat-msg {
       background: rgba(255, 255, 255, 0.1);
-      padding: 8px 12px;
-      border-radius: 10px;
+      padding: 10px 14px;
+      border-radius: 12px;
       word-break: break-word;
       font-size: 15px;
     }
-    .chat-msg span {
-      font-weight: bold;
-      color: #60a5fa;
-      margin-left: 5px;
-    }
-    .chat-input-container {
+    .chat-msg span { font-weight: bold; color: #60a5fa; margin-left: 5px; }
+    .chat-input-container { display: flex; gap: 10px; }
+    .chat-input-container input { margin-bottom: 0; text-align: right; }
+    .chat-input-container button { margin-top: 0; width: 100px; flex-shrink: 0; }
+
+    .sidebar-player {
       display: flex;
-      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 10px 12px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      font-size: 14px;
     }
-    .chat-input-container input {
-      margin-bottom: 0;
-      text-align: right;
-    }
-    .chat-input-container button {
+    .sidebar-controls { display: flex; gap: 5px; }
+    .btn-ctrl {
+      padding: 5px 8px;
+      font-size: 12px;
+      border-radius: 6px;
       margin-top: 0;
-      width: 90px;
-      flex-shrink: 0;
+      width: auto;
     }
+    .btn-allow { background: #10b981; }
+    .btn-allow:hover { background: #059669; }
+    .btn-mute { background: #ef4444; }
+    .btn-mute:hover { background: #dc2626; }
+    .muted-badge { color: #ef4444; font-size: 12px; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -139,16 +160,26 @@
     <button id="hideRoleBtn">👀 فهمت</button>
   </div>
 
-  <!-- شاشة المحادثة المباشرة (الشات) -->
-  <div class="container hidden" id="chatScreen">
-    <h1>💬 المحادثة</h1>
-    <div class="status">تناقشوا واكتشفوا مين برا السالفة!</div>
+  <!-- شاشة المحادثة والتحكم -->
+  <div class="container chat-layout hidden" id="chatScreen">
+    <!-- مربع التحكم واللاعبين (الجانبي) -->
+    <div class="sidebar">
+      <h3>👥 قائمة اللاعبين</h3>
+      <div id="sidebarPlayers"></div>
+    </div>
 
-    <div id="chatBox" class="chat-box"></div>
+    <!-- مربع المحادثة الرئيسي -->
+    <div class="chat-main">
+      <h1>💬 المحادثة</h1>
+      <div class="status">تناقشوا واكتشفوا مين برا السالفة!</div>
 
-    <div class="chat-input-container">
-      <input id="msgInput" type="text" placeholder="اكتب رسالتك..." maxlength="100">
-      <button id="sendMsgBtn">إرسال</button>
+      <div id="chatBox" class="chat-box"></div>
+
+      <div class="chat-input-container">
+        <input id="msgInput" type="text" placeholder="اكتب رسالتك..." maxlength="100">
+        <button id="sendMsgBtn">إرسال</button>
+      </div>
+      <div id="chatError" class="error"></div>
     </div>
   </div>
 
@@ -186,6 +217,8 @@
     const chatBox = document.getElementById("chatBox");
     const msgInput = document.getElementById("msgInput");
     const sendMsgBtn = document.getElementById("sendMsgBtn");
+    const chatError = document.getElementById("chatError");
+    const sidebarPlayers = document.getElementById("sidebarPlayers");
 
     let currentRoom = null;
     let isHost = false;
@@ -246,13 +279,39 @@
 
     socket.on("players:update", (playerList) => {
       players.innerHTML = "";
+      sidebarPlayers.innerHTML = "";
+
       playerList.forEach((player) => {
+        // تحديث القائمة في اللوبي
         const div = document.createElement("div");
         div.className = "player";
         div.textContent = "👤 " + player.name;
         players.appendChild(div);
+
+        // تحديث القائمة الجانبية في الشات
+        const sideDiv = document.createElement("div");
+        sideDiv.className = "sidebar-player";
+        
+        let playerInfo = `<span>👤 ${player.name} ${player.isMuted ? '<span class="muted-badge">(مكتوم)</span>' : ''}</span>`;
+        
+        let controls = "";
+        if (isHost && player.id !== socket.id) {
+          controls = `
+            <div class="sidebar-controls">
+              <button class="btn-ctrl btn-allow" onclick="toggleMute('${player.id}', false)">🔊 سماح</button>
+              <button class="btn-ctrl btn-mute" onclick="toggleMute('${player.id}', true)">🔇 كتم</button>
+            </div>
+          `;
+        }
+
+        sideDiv.innerHTML = playerInfo + controls;
+        sidebarPlayers.appendChild(sideDiv);
       });
     });
+
+    function toggleMute(targetId, muteState) {
+      socket.emit("toggle-mute", { roomCode: currentRoom, targetId, muteState });
+    }
 
     startBtn.addEventListener("click", () => {
       socket.emit("start-game", { roomCode: currentRoom }, (response) => {
@@ -273,13 +332,18 @@
       showScreen(chatScreen);
     });
 
-    // إرسال الرسائل
     function sendMessage() {
+      chatError.textContent = "";
       const text = msgInput.value.trim();
       if (!text) return;
 
-      socket.emit("send-message", { roomCode: currentRoom, message: text });
-      msgInput.value = "";
+      socket.emit("send-message", { roomCode: currentRoom, message: text }, (res) => {
+        if (res && !res.success) {
+          chatError.textContent = res.message;
+        } else {
+          msgInput.value = "";
+        }
+      });
     }
 
     sendMsgBtn.addEventListener("click", sendMessage);
@@ -287,7 +351,6 @@
       if (e.key === "Enter") sendMessage();
     });
 
-    // استقبال الرسائل وعرضها في الشات
     socket.on("chat:message", (data) => {
       const msgDiv = document.createElement("div");
       msgDiv.className = "chat-msg";
