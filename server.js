@@ -31,7 +31,21 @@ const animals = [
   "🦒 زرافة",
   "🐧 بطريق",
   "🐢 سلحفاة",
-  "🦓 حمار وحشي"
+  "🦓 حمار وحشي",
+  "🦅 صقر",
+  "🐦 عصفور",
+  "🐊 تمساح",
+  "🦅 نسر",
+  "🦉 بومة",
+  "🐺 ذئب",
+  "🦏 خرتيت",
+  "🦛 فرس النهر",
+  "🦘 كنجر",
+  "🐪 جمل",
+  "🐴 حصان",
+  "🐬 دلفين",
+  "🦈 قرش",
+  "🦚 طاووس"
 ];
 
 function generateRoomCode() {
@@ -129,10 +143,10 @@ io.on("connection", (socket) => {
       });
     }
 
-    if (room.players.length >= 20) {
+    if (room.players.length >= 7) {
       return callback({
         success: false,
-        message: "الغرفة ممتلئة"
+        message: "الغرفة ممتلئة (الحد الأقصى 7 لاعبين)"
       });
     }
 
@@ -192,6 +206,13 @@ io.on("connection", (socket) => {
       return callback({
         success: false,
         message: "لازم يكون في 3 لاعبين على الأقل"
+      });
+    }
+
+    if (room.players.length > 7) {
+      return callback({
+        success: false,
+        message: "الحد الأقصى للعب هو 7 لاعبين فقط"
       });
     }
 
