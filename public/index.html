@@ -425,9 +425,13 @@
 
       }
 
+      const pin = prompt("🔐 أدخل كلمة سر المالك لإنشاء الغرفة:");
+
+      if (!pin) return;
+
       socket.emit(
         "create-room",
-        { name },
+        { name, pin },
 
         (response) => {
 
