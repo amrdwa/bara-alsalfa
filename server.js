@@ -144,7 +144,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // حدث الشات مع فحص الكتم
+  // حدث الشات مع فحص الكتم وتمرير senderId لتمييز رسائل كل لاعب
   socket.on("send-message", ({ roomCode, message }, callback) => {
     const room = rooms.get(roomCode);
     if (!room) return;
@@ -160,6 +160,7 @@ io.on("connection", (socket) => {
     }
 
     io.to(roomCode).emit("chat:message", {
+      senderId: socket.id, // تم تضمين معرّف المرسل هنا لتمييز الرسائل
       sender: player.name,
       message: message.trim()
     });
