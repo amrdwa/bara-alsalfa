@@ -23,7 +23,7 @@
       box-shadow: 0 20px 60px rgba(0,0,0,0.5);
     }
     .chat-layout {
-      width: min(95%, 850px);
+      width: min(95%, 900px);
       display: flex;
       gap: 20px;
     }
@@ -46,7 +46,8 @@
     .secondary { background: #374151; }
     .secondary:hover { background: #4b5563; }
     .spectate-btn { background: #059669; }
-    .spectate-btn:hover { background: #047857; }
+    .vote-trigger-btn { background: #eab308; color: black; margin-bottom: 15px; }
+    .vote-trigger-btn:hover { background: #ca8a04; }
     .hidden { display: none !important; }
     .room-code { font-size: 42px; font-weight: bold; letter-spacing: 8px; color: #60a5fa; margin: 20px 0; }
     .players { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
@@ -61,7 +62,7 @@
     .sidebar { flex: 1; text-align: right; }
     
     .chat-box {
-      height: 350px;
+      height: 300px;
       overflow-y: auto;
       background: rgba(0, 0, 0, 0.35);
       border: 1px solid rgba(255, 255, 255, 0.1);
@@ -97,9 +98,6 @@
       border-radius: 15px 15px 2px 15px;
       text-align: left;
     }
-    .chat-msg.my-msg .sender-name {
-      color: #93c5fd;
-    }
 
     .chat-input-container { display: flex; gap: 10px; }
     .chat-input-container input { margin-bottom: 0; text-align: right; }
@@ -124,50 +122,64 @@
       width: auto;
     }
     .btn-allow { background: #10b981; }
-    .btn-allow:hover { background: #059669; }
     .btn-mute { background: #ef4444; }
-    .btn-mute:hover { background: #dc2626; }
-    .muted-badge { color: #ef4444; font-size: 12px; font-weight: bold; }
-    
-    .spectator-banner {
-      background: #059669;
-      color: white;
+
+    .votes-box {
+      margin-top: 15px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
       padding: 10px;
-      border-radius: 10px;
-      margin-bottom: 10px;
-      font-weight: bold;
+      font-size: 13px;
     }
+    .vote-item {
+      padding: 6px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    /* خيارات التصويت والتخمين Vertical list */
+    .vertical-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin: 20px 0;
+    }
+    .vertical-list button {
+      margin-top: 0;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .vertical-list button:hover:not(:disabled) {
+      background: #2563eb;
+    }
+
+    .correct-btn { background: #10b981 !important; color: white !important; }
+    .wrong-btn { background: #ef4444 !important; color: white !important; }
   </style>
 </head>
 <body>
 
   <!-- الشاشة الرئيسية -->
   <div class="container" id="home">
-    <h1>🎭</h1>
-    <h1>برا السالفة</h1>
+    <h1>🎭 برا السالفة</h1>
     <div class="subtitle">لعبة جماعية بين الأصدقاء</div>
 
     <input id="nameInput" type="text" placeholder="اكتب اسمك" maxlength="20">
 
     <button id="showCreateBtn">🏠 إنشاء غرفة</button>
-
     <div id="createBox" class="box-container hidden">
       <input id="pinInput" type="password" placeholder="🔐 كلمة سر المالك">
       <button id="createBtn">تأكيد وإنشاء الغرفة</button>
     </div>
 
     <button id="showJoinBtn" class="secondary">🔑 دخول إلى غرفة</button>
-
     <div id="joinBox" class="box-container hidden">
       <input id="roomInput" type="text" placeholder="كود الغرفة" maxlength="4">
       <button id="joinBtn">دخول كـ لاعب</button>
     </div>
 
-    <!-- خيار المشاهدة الجديد -->
     <button id="showSpectateBtn" class="spectate-btn">👁️ مشاهدة لعبة</button>
-
     <div id="spectateBox" class="box-container hidden">
-      <input id="spectateRoomInput" type="text" placeholder="كود اللعبة للمشاهدة" maxlength="4">
+      <input id="spectateRoomInput" type="text" placeholder="كود اللعبة" maxlength="4">
       <button id="spectateBtn" class="spectate-btn">دخول للمشاهدة 👁️</button>
     </div>
 
@@ -178,15 +190,11 @@
   <div class="container hidden" id="lobby">
     <h1>🏠 الغرفة</h1>
     <div id="roomCode" class="room-code"></div>
-    <div class="status">أرسل كود الغرفة لأصحابك</div>
-
     <h3>👥 اللاعبين</h3>
     <div id="players" class="players"></div>
-
     <div id="hostControls" class="hidden">
       <button id="startBtn">🚀 ابدأ اللعبة</button>
     </div>
-
     <div id="lobbyMessage" class="error"></div>
   </div>
 
@@ -194,22 +202,25 @@
   <div class="container hidden" id="roleScreen">
     <h1>🔒 دورك</h1>
     <div id="roleBox" class="role"></div>
-    <div class="status">لا تورجي شاشتك لأي لاعب 🤫</div>
     <button id="hideRoleBtn">👀 فهمت</button>
   </div>
 
   <!-- شاشة المحادثة والتحكم -->
   <div class="container chat-layout hidden" id="chatScreen">
     <div class="sidebar">
-      <h3>👥 قائمة اللاعبين</h3>
+      <h3>👥 اللاعبين</h3>
       <div id="sidebarPlayers"></div>
+
+      <!-- مربع أين صوت اللاعبون -->
+      <div class="votes-box">
+        <strong>🗳️ التصويت الحقيقي:</strong>
+        <div id="votesList">لم يبدأ التصويت بعد</div>
+      </div>
     </div>
 
     <div class="chat-main">
       <h1>💬 المحادثة</h1>
-      <div id="spectatorBanner" class="spectator-banner hidden">👁️ أنت الآن في وضع المشاهدة فقط</div>
-      <div class="status" id="chatStatus">تناقشوا واكتشفوا مين برا السالفة!</div>
-
+      <button id="hostVoteBtn" class="vote-trigger-btn hidden">🗳️ بدء التصويت الآن</button>
       <div id="chatBox" class="chat-box"></div>
 
       <div class="chat-input-container" id="chatInputArea">
@@ -220,6 +231,22 @@
     </div>
   </div>
 
+  <!-- شاشة اختيار التصويت -->
+  <div class="container hidden" id="voteScreen">
+    <h1>🗳️ مين تتوقع برا السالفة؟</h1>
+    <div class="status">اختر شخص واحد يشك فيه الجميع:</div>
+    <div id="voteOptions" class="vertical-list"></div>
+  </div>
+
+  <!-- شاشة التخمين النهائي للحيوانات -->
+  <div class="container hidden" id="guessScreen">
+    <h1 id="guessTitle">🎯 التخمين النهائي</h1>
+    <div id="outsiderRevealBanner" class="status"></div>
+    <div class="status" id="guessStatus"></div>
+
+    <div id="animalChoices" class="vertical-list"></div>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
@@ -228,6 +255,8 @@
     const lobby = document.getElementById("lobby");
     const roleScreen = document.getElementById("roleScreen");
     const chatScreen = document.getElementById("chatScreen");
+    const voteScreen = document.getElementById("voteScreen");
+    const guessScreen = document.getElementById("guessScreen");
 
     const nameInput = document.getElementById("nameInput");
     const pinInput = document.getElementById("pinInput");
@@ -261,18 +290,26 @@
     const sendMsgBtn = document.getElementById("sendMsgBtn");
     const chatError = document.getElementById("chatError");
     const sidebarPlayers = document.getElementById("sidebarPlayers");
-    const chatInputArea = document.getElementById("chatInputArea");
-    const spectatorBanner = document.getElementById("spectatorBanner");
+    const hostVoteBtn = document.getElementById("hostVoteBtn");
+    const votesList = document.getElementById("votesList");
+
+    const voteOptions = document.getElementById("voteOptions");
+    const animalChoices = document.getElementById("animalChoices");
+    const outsiderRevealBanner = document.getElementById("outsiderRevealBanner");
+    const guessStatus = document.getElementById("guessStatus");
 
     let currentRoom = null;
     let isHost = false;
     let isSpectator = false;
+    let allPlayersList = [];
 
     function showScreen(screen) {
       home.classList.add("hidden");
       lobby.classList.add("hidden");
       roleScreen.classList.add("hidden");
       chatScreen.classList.add("hidden");
+      voteScreen.classList.add("hidden");
+      guessScreen.classList.add("hidden");
       screen.classList.remove("hidden");
     }
 
@@ -295,87 +332,73 @@
     });
 
     createBtn.addEventListener("click", () => {
-      homeMessage.textContent = "";
       const name = nameInput.value.trim();
       const pin = pinInput.value.trim();
+      if (!name || !pin) return homeMessage.textContent = "ادخل الاسم ورقم المالك";
 
-      if (!name) return homeMessage.textContent = "اكتب اسمك أولًا";
-      if (!pin) return homeMessage.textContent = "أدخل كلمة سر المالك";
-
-      socket.emit("create-room", { name, pin }, (response) => {
-        if (!response.success) return homeMessage.textContent = response.message;
-        currentRoom = response.roomCode;
-        isHost = response.isHost;
+      socket.emit("create-room", { name, pin }, (res) => {
+        if (!res.success) return homeMessage.textContent = res.message;
+        currentRoom = res.roomCode;
+        isHost = true;
         roomCode.textContent = currentRoom;
         hostControls.classList.remove("hidden");
+        hostVoteBtn.classList.remove("hidden");
         showScreen(lobby);
       });
     });
 
     joinBtn.addEventListener("click", () => {
-      homeMessage.textContent = "";
       const name = nameInput.value.trim();
       const code = roomInput.value.trim();
+      if (!name || !code) return homeMessage.textContent = "ادخل الاسم والكود";
 
-      if (!name) return homeMessage.textContent = "اكتب اسمك أولًا";
-      if (!code) return homeMessage.textContent = "اكتب كود الغرفة";
-
-      socket.emit("join-room", { name, roomCode: code }, (response) => {
-        if (!response.success) return homeMessage.textContent = response.message;
-        currentRoom = response.roomCode;
-        isHost = response.isHost;
+      socket.emit("join-room", { name, roomCode: code }, (res) => {
+        if (!res.success) return homeMessage.textContent = res.message;
+        currentRoom = res.roomCode;
+        isHost = res.isHost;
         roomCode.textContent = currentRoom;
-        if (isHost) hostControls.classList.remove("hidden");
+        if (isHost) {
+          hostControls.classList.remove("hidden");
+          hostVoteBtn.classList.remove("hidden");
+        }
         showScreen(lobby);
       });
     });
 
-    // حدث زر المشاهدة
     spectateBtn.addEventListener("click", () => {
-      homeMessage.textContent = "";
       const code = spectateRoomInput.value.trim();
+      if (!code) return;
 
-      if (!code) return homeMessage.textContent = "ادخل كود اللعبة للمشاهدة";
-
-      socket.emit("spectate-room", { roomCode: code }, (response) => {
-        if (!response.success) return homeMessage.textContent = response.message;
-        currentRoom = response.roomCode;
+      socket.emit("spectate-room", { roomCode: code }, (res) => {
+        if (!res.success) return homeMessage.textContent = res.message;
+        currentRoom = res.roomCode;
         isSpectator = true;
-        
-        // إخفاء صندوق الإرسال وإظهار بنر المشاهدة
-        chatInputArea.classList.add("hidden");
-        spectatorBanner.classList.remove("hidden");
-
+        document.getElementById("chatInputArea").classList.add("hidden");
         showScreen(chatScreen);
       });
     });
 
     socket.on("players:update", (playerList) => {
+      allPlayersList = playerList;
       players.innerHTML = "";
       sidebarPlayers.innerHTML = "";
 
-      playerList.forEach((player) => {
+      playerList.forEach((p) => {
         const div = document.createElement("div");
         div.className = "player";
-        div.textContent = "👤 " + player.name;
+        div.textContent = "👤 " + p.name;
         players.appendChild(div);
 
         const sideDiv = document.createElement("div");
         sideDiv.className = "sidebar-player";
-        
-        let playerInfo = `<span>👤 ${player.name} ${player.isMuted ? '<span class="muted-badge">(مكتوم)</span>' : ''}</span>`;
-        
-        let controls = "";
-        if (isHost && player.id !== socket.id) {
-          controls = `
-            <div class="sidebar-controls">
-              <button class="btn-ctrl btn-allow" onclick="toggleMute('${player.id}', false)">🔊 سماح</button>
-              <button class="btn-ctrl btn-mute" onclick="toggleMute('${player.id}', true)">🔇 كتم</button>
-            </div>
-          `;
-        }
+        let controls = (isHost && p.id !== socket.id) ? `
+          <div class="sidebar-controls">
+            <button class="btn-ctrl btn-allow" onclick="toggleMute('${p.id}', false)">🔊</button>
+            <button class="btn-ctrl btn-mute" onclick="toggleMute('${p.id}', true)">🔇</button>
+          </div>
+        ` : "";
 
-        sideDiv.innerHTML = playerInfo + controls;
+        sideDiv.innerHTML = `<span>👤 ${p.name} ${p.isMuted ? '🔇' : ''}</span>` + controls;
         sidebarPlayers.appendChild(sideDiv);
       });
     });
@@ -385,8 +408,8 @@
     }
 
     startBtn.addEventListener("click", () => {
-      socket.emit("start-game", { roomCode: currentRoom }, (response) => {
-        if (!response.success) lobbyMessage.textContent = response.message;
+      socket.emit("start-game", { roomCode: currentRoom }, (res) => {
+        if (!res.success) lobbyMessage.textContent = res.message;
       });
     });
 
@@ -399,13 +422,98 @@
       showScreen(roleScreen);
     });
 
-    hideRoleBtn.addEventListener("click", () => {
-      showScreen(chatScreen);
+    hideRoleBtn.addEventListener("click", () => showScreen(chatScreen));
+
+    // بدء مرحلة التصويت عبر المالك
+    hostVoteBtn.addEventListener("click", () => {
+      socket.emit("start-voting-phase", { roomCode: currentRoom });
+    });
+
+    socket.on("vote:start", () => {
+      if (isSpectator) {
+        showScreen(chatScreen);
+        return;
+      }
+
+      voteOptions.innerHTML = "";
+      // تصفية القائمة لاستثناء الشخص نفسه
+      const candidates = allPlayersList.filter(p => p.id !== socket.id);
+
+      candidates.forEach(p => {
+        const btn = document.createElement("button");
+        btn.textContent = "👤 " + p.name;
+        btn.onclick = () => {
+          socket.emit("submit-vote", { roomCode: currentRoom, targetId: p.id });
+          showScreen(chatScreen);
+        };
+        voteOptions.appendChild(btn);
+      });
+
+      showScreen(voteScreen);
+    });
+
+    // تحديث الشاشة الجانبية بالأصوات مباشرة
+    socket.on("vote:update-live", (votes) => {
+      votesList.innerHTML = "";
+      votes.forEach(v => {
+        const div = document.createElement("div");
+        div.className = "vote-item";
+        div.textContent = `👈 ${v.voterName} صوت لـ : ${v.targetName}`;
+        votesList.appendChild(div);
+      });
+    });
+
+    // انتهاء التصويت وبدء التخمين للحيوان
+    socket.on("vote:completed", ({ outsiderName, outsiderId, choices }) => {
+      outsiderRevealBanner.innerHTML = `🚨 الشخص الذي كان برا السالفة هو: <strong>${outsiderName}</strong>`;
+      animalChoices.innerHTML = "";
+
+      const isMeOutsider = (socket.id === outsiderId);
+
+      if (isMeOutsider) {
+        guessStatus.textContent = "🎯 اختر الحيوان الذي تعتقد أنه كان السالفة:";
+      } else {
+        guessStatus.textContent = "👀 شاهد الآن ماذا سيختار الشخص الذي برا السالفة...";
+      }
+
+      choices.forEach(animalName => {
+        const btn = document.createElement("button");
+        btn.textContent = animalName;
+        btn.dataset.animal = animalName;
+
+        if (!isMeOutsider) {
+          btn.disabled = true; // باقي اللاعبين مشاهدون فقط للحيوانات
+        } else {
+          btn.onclick = () => {
+            socket.emit("guess-animal", { roomCode: currentRoom, chosenAnimal: animalName });
+          };
+        }
+
+        animalChoices.appendChild(btn);
+      });
+
+      showScreen(guessScreen);
+    });
+
+    // إظهار نتيجة التخمين
+    socket.on("guess:result", ({ chosenAnimal, correctAnimal, isCorrect }) => {
+      const buttons = animalChoices.querySelectorAll("button");
+      buttons.forEach(btn => {
+        btn.disabled = true;
+        if (btn.dataset.animal === chosenAnimal) {
+          btn.className = isCorrect ? "correct-btn" : "wrong-btn";
+        }
+      });
+
+      if (isCorrect) {
+        guessStatus.innerHTML = `<span style="color:#10b981; font-weight:bold;">🎉 نعم! الاختيار صحيح: (${chosenAnimal})</span>`;
+      } else {
+        guessStatus.innerHTML = `<span style="color:#ef4444; font-weight:bold;">❌ اختيار خاطئ! الحيوان الصحيح هو: (${correctAnimal})</span>`;
+      }
     });
 
     function sendMessage() {
       if (isSpectator) return;
-      chatError.textContent = "";
       const text = msgInput.value.trim();
       if (!text) return;
 
@@ -428,11 +536,7 @@
       const isMe = (data.senderId === socket.id);
 
       msgDiv.className = isMe ? "chat-msg my-msg" : "chat-msg";
-      
-      msgDiv.innerHTML = `
-        <span class="sender-name">${isMe ? "أنت" : data.sender}</span>
-        <div>${data.message}</div>
-      `;
+      msgDiv.innerHTML = `<span class="sender-name">${isMe ? "أنت" : data.sender}</span><div>${data.message}</div>`;
 
       chatBox.appendChild(msgDiv);
       chatBox.scrollTop = chatBox.scrollHeight;
