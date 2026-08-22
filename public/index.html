@@ -3,666 +3,298 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <title>برا السالفة 🎭</title>
-
   <style>
-    * {
-      box-sizing: border-box;
-    }
-
+    * { box-sizing: border-box; }
     body {
-      margin: 0;
-      min-height: 100vh;
-
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
+      margin: 0; min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
       font-family: Arial, sans-serif;
-
-      background:
-        radial-gradient(circle at top, #273c75, #111827 55%, #050505);
-
+      background: radial-gradient(circle at top, #273c75, #111827 55%, #050505);
       color: white;
     }
-
     .container {
       width: min(92%, 500px);
-
       background: rgba(0, 0, 0, 0.55);
-
       border: 1px solid rgba(255,255,255,0.12);
-
       border-radius: 25px;
-
       padding: 30px;
-
       text-align: center;
-
-      box-shadow:
-        0 20px 60px rgba(0,0,0,0.5);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
     }
-
-    h1 {
-      font-size: 42px;
-      margin: 0 0 10px;
-    }
-
-    .subtitle {
-      color: #cbd5e1;
-      margin-bottom: 30px;
-    }
-
+    h1 { font-size: 42px; margin: 0 0 10px; }
+    .subtitle { color: #cbd5e1; margin-bottom: 30px; }
     input {
-      width: 100%;
-
-      padding: 15px;
-
-      border-radius: 12px;
-
-      border: none;
-      outline: none;
-
-      font-size: 18px;
-
-      text-align: center;
-
-      margin-bottom: 12px;
+      width: 100%; padding: 15px; border-radius: 12px;
+      border: none; outline: none; font-size: 18px;
+      text-align: center; margin-bottom: 12px;
     }
-
     button {
-      width: 100%;
-
-      padding: 15px;
-
-      margin-top: 10px;
-
-      border: none;
-
-      border-radius: 12px;
-
-      background: #5865f2;
-
-      color: white;
-
-      font-size: 18px;
-
-      font-weight: bold;
-
-      cursor: pointer;
+      width: 100%; padding: 15px; margin-top: 10px;
+      border: none; border-radius: 12px; background: #5865f2;
+      color: white; font-size: 18px; font-weight: bold; cursor: pointer;
     }
+    button:hover { background: #4752c4; }
+    .secondary { background: #374151; }
+    .secondary:hover { background: #4b5563; }
+    .hidden { display: none; }
+    .room-code { font-size: 42px; font-weight: bold; letter-spacing: 8px; color: #60a5fa; margin: 20px 0; }
+    .players { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
+    .player { padding: 12px; background: rgba(255,255,255,0.08); border-radius: 10px; }
+    .status { margin: 20px 0; color: #cbd5e1; }
+    .role { font-size: 28px; margin: 25px 0; padding: 25px; border-radius: 20px; background: rgba(255,255,255,0.08); }
+    .animal { font-size: 48px; margin-top: 15px; }
+    .error { color: #f87171; margin-top: 15px; }
+    .box-container { margin-top: 15px; padding: 15px; background: rgba(255, 255, 255, 0.05); border-radius: 15px; }
 
-    button:hover {
-      background: #4752c4;
-    }
-
-    .secondary {
-      background: #374151;
-    }
-
-    .secondary:hover {
-      background: #4b5563;
-    }
-
-    .hidden {
-      display: none;
-    }
-
-    .room-code {
-      font-size: 42px;
-
-      font-weight: bold;
-
-      letter-spacing: 8px;
-
-      color: #60a5fa;
-
-      margin: 20px 0;
-    }
-
-    .players {
-      margin-top: 20px;
-
-      display: flex;
-
-      flex-direction: column;
-
-      gap: 10px;
-    }
-
-    .player {
-      padding: 12px;
-
-      background: rgba(255,255,255,0.08);
-
-      border-radius: 10px;
-    }
-
-    .status {
-      margin: 20px 0;
-
-      color: #cbd5e1;
-    }
-
-    .role {
-      font-size: 28px;
-
-      margin: 25px 0;
-
-      padding: 25px;
-
-      border-radius: 20px;
-
-      background: rgba(255,255,255,0.08);
-    }
-
-    .animal {
-      font-size: 48px;
-
-      margin-top: 15px;
-    }
-
-    .error {
-      color: #f87171;
-
-      margin-top: 15px;
-    }
-
-    .success {
-      color: #4ade80;
-
-      margin-top: 15px;
-    }
-
-    .box-container {
-      margin-top: 15px;
-      padding: 15px;
-      background: rgba(255, 255, 255, 0.05);
+    /* أنماط الشات الجديد */
+    .chat-box {
+      height: 280px;
+      overflow-y: auto;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 15px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      text-align: right;
+      margin-bottom: 15px;
+    }
+    .chat-msg {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 8px 12px;
+      border-radius: 10px;
+      word-break: break-word;
+      font-size: 15px;
+    }
+    .chat-msg span {
+      font-weight: bold;
+      color: #60a5fa;
+      margin-left: 5px;
+    }
+    .chat-input-container {
+      display: flex;
+      gap: 8px;
+    }
+    .chat-input-container input {
+      margin-bottom: 0;
+      text-align: right;
+    }
+    .chat-input-container button {
+      margin-top: 0;
+      width: 90px;
+      flex-shrink: 0;
     }
   </style>
 </head>
-
 <body>
 
   <!-- الشاشة الرئيسية -->
-
   <div class="container" id="home">
-
     <h1>🎭</h1>
-
     <h1>برا السالفة</h1>
+    <div class="subtitle">لعبة جماعية بين الأصدقاء</div>
 
-    <div class="subtitle">
-      لعبة جماعية بين الأصدقاء
-    </div>
+    <input id="nameInput" type="text" placeholder="اكتب اسمك" maxlength="20">
 
-    <input
-      id="nameInput"
-      type="text"
-      placeholder="اكتب اسمك"
-      maxlength="20"
-    >
+    <button id="showCreateBtn">🏠 إنشاء غرفة</button>
 
-    <button id="showCreateBtn">
-      🏠 إنشاء غرفة
-    </button>
-
-    <!-- صندوق إدخال كلمة سر المالك المميز داخل الواجهة -->
     <div id="createBox" class="box-container hidden">
-      <input
-        id="pinInput"
-        type="password"
-        placeholder="🔐 كلمة سر المالك"
-      >
-      <button id="createBtn">
-        تأكيد وإنشاء الغرفة
-      </button>
+      <input id="pinInput" type="password" placeholder="🔐 كلمة سر المالك">
+      <button id="createBtn">تأكيد وإنشاء الغرفة</button>
     </div>
 
-    <button
-      id="showJoinBtn"
-      class="secondary"
-    >
-      🔑 دخول إلى غرفة
-    </button>
+    <button id="showJoinBtn" class="secondary">🔑 دخول إلى غرفة</button>
 
-    <div
-      id="joinBox"
-      class="box-container hidden"
-    >
-
-      <input
-        id="roomInput"
-        type="text"
-        placeholder="كود الغرفة"
-        maxlength="4"
-      >
-
-      <button id="joinBtn">
-        دخول
-      </button>
-
+    <div id="joinBox" class="box-container hidden">
+      <input id="roomInput" type="text" placeholder="كود الغرفة" maxlength="4">
+      <button id="joinBtn">دخول</button>
     </div>
 
-    <div
-      id="homeMessage"
-      class="error"
-    ></div>
-
+    <div id="homeMessage" class="error"></div>
   </div>
-
 
   <!-- غرفة الانتظار -->
-
-  <div
-    class="container hidden"
-    id="lobby"
-  >
-
+  <div class="container hidden" id="lobby">
     <h1>🏠 الغرفة</h1>
-
-    <div
-      id="roomCode"
-      class="room-code"
-    ></div>
-
-    <div class="status">
-      أرسل كود الغرفة لأصحابك
-    </div>
+    <div id="roomCode" class="room-code"></div>
+    <div class="status">أرسل كود الغرفة لأصحابك</div>
 
     <h3>👥 اللاعبين</h3>
+    <div id="players" class="players"></div>
 
-    <div
-      id="players"
-      class="players"
-    ></div>
-
-    <div
-      id="hostControls"
-      class="hidden"
-    >
-
-      <button id="startBtn">
-        🚀 ابدأ اللعبة
-      </button>
-
+    <div id="hostControls" class="hidden">
+      <button id="startBtn">🚀 ابدأ اللعبة</button>
     </div>
 
-    <div
-      id="lobbyMessage"
-      class="error"
-    ></div>
-
+    <div id="lobbyMessage" class="error"></div>
   </div>
-
 
   <!-- شاشة الدور -->
-
-  <div
-    class="container hidden"
-    id="roleScreen"
-  >
-
+  <div class="container hidden" id="roleScreen">
     <h1>🔒 دورك</h1>
-
-    <div
-      id="roleBox"
-      class="role"
-    ></div>
-
-    <div class="status">
-      لا تورجي شاشتك لأي لاعب 🤫
-    </div>
-
-    <button id="hideRoleBtn">
-      👀 فهمت
-    </button>
-
+    <div id="roleBox" class="role"></div>
+    <div class="status">لا تورجي شاشتك لأي لاعب 🤫</div>
+    <button id="hideRoleBtn">👀 فهمت</button>
   </div>
 
+  <!-- شاشة المحادثة المباشرة (الشات) -->
+  <div class="container hidden" id="chatScreen">
+    <h1>💬 المحادثة</h1>
+    <div class="status">تناقشوا واكتشفوا مين برا السالفة!</div>
 
-  <!-- شاشة الانتظار -->
+    <div id="chatBox" class="chat-box"></div>
 
-  <div
-    class="container hidden"
-    id="waitingScreen"
-  >
-
-    <h1>🎭 الجولة بدأت</h1>
-
-    <div class="status">
-      الآن اذهبوا للجروب الخارجي وتناقشوا.
+    <div class="chat-input-container">
+      <input id="msgInput" type="text" placeholder="اكتب رسالتك..." maxlength="100">
+      <button id="sendMsgBtn">إرسال</button>
     </div>
-
-    <p>
-      عندما تنتهوا من النقاش،
-      ارجعوا إلى اللعبة.
-    </p>
-
   </div>
-
 
   <script src="/socket.io/socket.io.js"></script>
-
   <script>
-
     const socket = io();
 
     const home = document.getElementById("home");
-
     const lobby = document.getElementById("lobby");
+    const roleScreen = document.getElementById("roleScreen");
+    const chatScreen = document.getElementById("chatScreen");
 
-    const roleScreen =
-      document.getElementById("roleScreen");
+    const nameInput = document.getElementById("nameInput");
+    const pinInput = document.getElementById("pinInput");
+    const roomInput = document.getElementById("roomInput");
 
-    const waitingScreen =
-      document.getElementById("waitingScreen");
+    const showCreateBtn = document.getElementById("showCreateBtn");
+    const createBox = document.getElementById("createBox");
+    const createBtn = document.getElementById("createBtn");
 
-    const nameInput =
-      document.getElementById("nameInput");
+    const showJoinBtn = document.getElementById("showJoinBtn");
+    const joinBox = document.getElementById("joinBox");
+    const joinBtn = document.getElementById("joinBtn");
 
-    const pinInput =
-      document.getElementById("pinInput");
+    const startBtn = document.getElementById("startBtn");
+    const players = document.getElementById("players");
+    const roomCode = document.getElementById("roomCode");
+    const roleBox = document.getElementById("roleBox");
+    const hideRoleBtn = document.getElementById("hideRoleBtn");
 
-    const roomInput =
-      document.getElementById("roomInput");
+    const homeMessage = document.getElementById("homeMessage");
+    const lobbyMessage = document.getElementById("lobbyMessage");
+    const hostControls = document.getElementById("hostControls");
 
-    const showCreateBtn =
-      document.getElementById("showCreateBtn");
-
-    const createBox =
-      document.getElementById("createBox");
-
-    const createBtn =
-      document.getElementById("createBtn");
-
-    const showJoinBtn =
-      document.getElementById("showJoinBtn");
-
-    const joinBox =
-      document.getElementById("joinBox");
-
-    const joinBtn =
-      document.getElementById("joinBtn");
-
-    const startBtn =
-      document.getElementById("startBtn");
-
-    const players =
-      document.getElementById("players");
-
-    const roomCode =
-      document.getElementById("roomCode");
-
-    const roleBox =
-      document.getElementById("roleBox");
-
-    const hideRoleBtn =
-      document.getElementById("hideRoleBtn");
-
-    const homeMessage =
-      document.getElementById("homeMessage");
-
-    const lobbyMessage =
-      document.getElementById("lobbyMessage");
-
-    const hostControls =
-      document.getElementById("hostControls");
-
+    const chatBox = document.getElementById("chatBox");
+    const msgInput = document.getElementById("msgInput");
+    const sendMsgBtn = document.getElementById("sendMsgBtn");
 
     let currentRoom = null;
-
     let isHost = false;
 
-
     function showScreen(screen) {
-
       home.classList.add("hidden");
-
       lobby.classList.add("hidden");
-
       roleScreen.classList.add("hidden");
-
-      waitingScreen.classList.add("hidden");
-
+      chatScreen.classList.add("hidden");
       screen.classList.remove("hidden");
-
     }
 
-
-    // إظهار وإخفاء حقل كلمة سر المالك
     showCreateBtn.addEventListener("click", () => {
-
       joinBox.classList.add("hidden");
-
       createBox.classList.toggle("hidden");
-
     });
-
 
     showJoinBtn.addEventListener("click", () => {
-
       createBox.classList.add("hidden");
-
       joinBox.classList.toggle("hidden");
-
     });
 
-
-    // زر إنشاء الغرفة الداخلي
     createBtn.addEventListener("click", () => {
-
       homeMessage.textContent = "";
-
       const name = nameInput.value.trim();
-
       const pin = pinInput.value.trim();
 
-      if (!name) {
+      if (!name) return homeMessage.textContent = "اكتب اسمك أولًا";
+      if (!pin) return homeMessage.textContent = "أدخل كلمة سر المالك";
 
-        homeMessage.textContent = "اكتب اسمك أولًا";
-
-        return;
-
-      }
-
-      if (!pin) {
-
-        homeMessage.textContent = "أدخل كلمة سر المالك";
-
-        return;
-
-      }
-
-      socket.emit(
-        "create-room",
-        { name, pin },
-
-        (response) => {
-
-          if (!response.success) {
-
-            // إظهار كلمة الخطأ تحت الحقل مباشرة في حال كانت كلمة السر خاطئة
-            homeMessage.textContent = response.message;
-
-            return;
-
-          }
-
-          currentRoom = response.roomCode;
-
-          isHost = response.isHost;
-
-          roomCode.textContent = currentRoom;
-
-          hostControls.classList.remove("hidden");
-
-          showScreen(lobby);
-
-        }
-      );
-
+      socket.emit("create-room", { name, pin }, (response) => {
+        if (!response.success) return homeMessage.textContent = response.message;
+        currentRoom = response.roomCode;
+        isHost = response.isHost;
+        roomCode.textContent = currentRoom;
+        hostControls.classList.remove("hidden");
+        showScreen(lobby);
+      });
     });
-
 
     joinBtn.addEventListener("click", () => {
-
       homeMessage.textContent = "";
-
       const name = nameInput.value.trim();
-
       const code = roomInput.value.trim();
 
-      if (!name) {
+      if (!name) return homeMessage.textContent = "اكتب اسمك أولًا";
+      if (!code) return homeMessage.textContent = "اكتب كود الغرفة";
 
-        homeMessage.textContent = "اكتب اسمك أولًا";
-
-        return;
-
-      }
-
-      if (!code) {
-
-        homeMessage.textContent = "اكتب كود الغرفة";
-
-        return;
-
-      }
-
-      socket.emit(
-        "join-room",
-        {
-          name,
-          roomCode: code
-        },
-
-        (response) => {
-
-          if (!response.success) {
-
-            homeMessage.textContent = response.message;
-
-            return;
-
-          }
-
-          currentRoom = response.roomCode;
-
-          isHost = response.isHost;
-
-          roomCode.textContent = currentRoom;
-
-          if (isHost) {
-
-            hostControls.classList.remove("hidden");
-
-          }
-
-          showScreen(lobby);
-
-        }
-      );
-
+      socket.emit("join-room", { name, roomCode: code }, (response) => {
+        if (!response.success) return homeMessage.textContent = response.message;
+        currentRoom = response.roomCode;
+        isHost = response.isHost;
+        roomCode.textContent = currentRoom;
+        if (isHost) hostControls.classList.remove("hidden");
+        showScreen(lobby);
+      });
     });
 
-
-    socket.on(
-      "players:update",
-      (playerList) => {
-
-        players.innerHTML = "";
-
-        playerList.forEach(
-          (player) => {
-
-            const div = document.createElement("div");
-
-            div.className = "player";
-
-            div.textContent = "👤 " + player.name;
-
-            players.appendChild(div);
-
-          }
-        );
-
-      }
-    );
-
+    socket.on("players:update", (playerList) => {
+      players.innerHTML = "";
+      playerList.forEach((player) => {
+        const div = document.createElement("div");
+        div.className = "player";
+        div.textContent = "👤 " + player.name;
+        players.appendChild(div);
+      });
+    });
 
     startBtn.addEventListener("click", () => {
-
-      socket.emit(
-        "start-game",
-        {
-          roomCode: currentRoom
-        },
-
-        (response) => {
-
-          if (!response.success) {
-
-            lobbyMessage.textContent = response.message;
-
-          }
-
-        }
-      );
-
+      socket.emit("start-game", { roomCode: currentRoom }, (response) => {
+        if (!response.success) lobbyMessage.textContent = response.message;
+      });
     });
 
-
-    socket.on(
-      "game:role",
-      (data) => {
-
-        if (data.role === "outsider") {
-
-          roleBox.innerHTML = `
-            🚨<br>
-            <strong>أنت برا السالفة</strong>
-          `;
-
-        } else {
-
-          roleBox.innerHTML = `
-            🐾<br>
-            <strong>الحيوان هو:</strong>
-            <div class="animal">
-              ${data.animal}
-            </div>
-          `;
-
-        }
-
-        showScreen(roleScreen);
-
+    socket.on("game:role", (data) => {
+      if (data.role === "outsider") {
+        roleBox.innerHTML = `🚨<br><strong>أنت برا السالفة</strong>`;
+      } else {
+        roleBox.innerHTML = `🐾<br><strong>الحيوان هو:</strong><div class="animal">${data.animal}</div>`;
       }
-    );
+      showScreen(roleScreen);
+    });
 
+    hideRoleBtn.addEventListener("click", () => {
+      showScreen(chatScreen);
+    });
 
-    socket.on(
-      "game:started",
-      () => {
+    // إرسال الرسائل
+    function sendMessage() {
+      const text = msgInput.value.trim();
+      if (!text) return;
 
-        console.log("Game started");
+      socket.emit("send-message", { roomCode: currentRoom, message: text });
+      msgInput.value = "";
+    }
 
-      }
-    );
+    sendMsgBtn.addEventListener("click", sendMessage);
+    msgInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
 
-
-    hideRoleBtn.addEventListener(
-      "click",
-      () => {
-
-        showScreen(waitingScreen);
-
-      }
-    );
-
+    // استقبال الرسائل وعرضها في الشات
+    socket.on("chat:message", (data) => {
+      const msgDiv = document.createElement("div");
+      msgDiv.className = "chat-msg";
+      msgDiv.innerHTML = `<span>${data.sender}:</span> ${data.message}`;
+      chatBox.appendChild(msgDiv);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    });
   </script>
-
 </body>
 </html>
