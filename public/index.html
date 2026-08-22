@@ -15,31 +15,31 @@
       font-family: Arial, sans-serif;
       color: white;
 
-      /* عرض الصورة كاملاً بدون قص */
+      /* عرض الصورة بحجم مناسب بدون قص وبشكل واضح */
       background-color: #000000;
       background-image: url('https://i.ibb.co/0jFwPT4p/Gemini-Generated-Image-wuqizwuqizwuqizw.png');
       background-repeat: no-repeat;
       background-position: center top;
       background-size: contain;
     }
+
     .container {
       width: min(92%, 520px);
-      background: rgba(0, 0, 0, 0.55);
-      backdrop-filter: blur(5px);
-      -webkit-backdrop-filter: blur(5px);
-      border: 1px solid rgba(255,255,255,0.12);
+      /* تم إلغاء Blur لتبقى صورة الشماغ والشخصية واضحة خلف اللعبة */
+      background: rgba(0, 0, 0, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.15);
       border-radius: 25px;
       padding: 25px;
       text-align: center;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
     }
+
     .chat-layout {
       width: min(95%, 900px);
       display: flex;
       gap: 20px;
     }
 
-    /* تحسين العرض للجوال وتفادي التغطية على أطراف الصورة */
     @media (max-width: 768px) {
       body {
         background-size: 100% auto;
@@ -84,7 +84,7 @@
     .chat-box {
       height: 300px;
       overflow-y: auto;
-      background: rgba(0, 0, 0, 0.35);
+      background: rgba(0, 0, 0, 0.45);
       border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 15px;
       padding: 15px;
