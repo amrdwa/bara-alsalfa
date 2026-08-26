@@ -5,7 +5,10 @@ const path = require("path");
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+  pingTimeout: 30000,
+  pingInterval: 10000
+});
 
 const PORT = process.env.PORT || 3000;
 const OWNER_PIN = "a********@#";
@@ -13,6 +16,8 @@ const OWNER_PIN = "a********@#";
 app.use(express.static(path.join(__dirname, "public")));
 
 const rooms = new Map();
+// كائن لتخزين مؤقتات الانتظار عند قطع اتصال اللاعبين
+const roomCleanups = new Map();
 
 const animals = [
   "🐱 قطة", "🐶 كلب", "🦁 أسد", "🐯 نمر", "🐰 أرنب", "🐼 باندا", "🐨 كوالا",
@@ -36,7 +41,8 @@ function getPlayerList(room) {
     name: player.name,
     score: player.score || 0,
     isMuted: player.isMuted || false,
-    ready: player.ready || false
+    ready: player.ready || false,
+    isConnected: player.isConnected !== false
   }));
 }
 
@@ -48,6 +54,7 @@ io.on("connection", (socket) => {
     const roomCode = generateRoomCode();
     const room = { 
       host: socket.id, 
+      hostName: name.trim(),
       players: [], 
       spectators: [], 
       started: false,
@@ -57,11 +64,12 @@ io.on("connection", (socket) => {
     };
     rooms.set(roomCode, room);
 
-    const player = { id: socket.id, name: name.trim(), score: 0, isMuted: false, ready: false };
+    const player = { id: socket.id, name: name.trim(), score: 0, isMuted: false, ready: false, isConnected: true };
     room.players.push(player);
 
     socket.join(roomCode);
     socket.roomCode = roomCode;
+    socket.playerName = name.trim();
 
     callback({ success: true, roomCode, isHost: true });
     io.to(roomCode).emit("players:update", getPlayerList(room));
@@ -80,11 +88,12 @@ io.on("connection", (socket) => {
     const alreadyName = room.players.some((p) => p.name.toLowerCase() === name.trim().toLowerCase());
     if (alreadyName) return callback({ success: false, message: "هذا الاسم مستخدم داخل الغرفة" });
 
-    const player = { id: socket.id, name: name.trim(), score: 0, isMuted: false, ready: false };
+    const player = { id: socket.id, name: name.trim(), score: 0, isMuted: false, ready: false, isConnected: true };
     room.players.push(player);
 
     socket.join(code);
     socket.roomCode = code;
+    socket.playerName = name.trim();
 
     callback({ success: true, roomCode: code, isHost: socket.id === room.host });
     io.to(code).emit("players:update", getPlayerList(room));
@@ -178,15 +187,12 @@ io.on("connection", (socket) => {
 
     const isCorrect = (chosenAnimal === room.currentAnimal);
 
-    // حساب النقاط للجولة الحالية وتحديث المجموع
     const roundSummary = room.players.map(p => {
       let earned = 0;
 
       if (p.id === room.outsiderId) {
-        // إذا كان برا السالفة وتخميته صح يوخذ 100
         if (isCorrect) earned = 100;
       } else {
-        // إذا كان لاعب عادي وصوت صح على برا السالفة يوخذ 100
         const userVote = room.votes.get(p.id);
         if (userVote && userVote.targetId === room.outsiderId) {
           earned = 100;
@@ -211,7 +217,6 @@ io.on("connection", (socket) => {
     });
   });
 
-  // إعادة الجولة والاستعداد
   socket.on("player-ready", ({ roomCode }) => {
     const room = rooms.get(roomCode);
     if (!room) return;
@@ -250,6 +255,7 @@ io.on("connection", (socket) => {
     if (typeof callback === "function") callback({ success: true });
   });
 
+  // منطق المغادرة المؤقتة لتفادي إغلاق الغرفة أثناء التبديل بين التطبيقات
   socket.on("disconnect", () => {
     const roomCode = socket.roomCode;
     if (!roomCode) return;
@@ -262,18 +268,31 @@ io.on("connection", (socket) => {
       return;
     }
 
-    room.players = room.players.filter((p) => p.id !== socket.id);
-
-    if (room.players.length === 0 && (!room.spectators || room.spectators.length === 0)) {
-      rooms.delete(roomCode);
-      return;
+    const player = room.players.find((p) => p.id === socket.id);
+    if (player) {
+      player.isConnected = false;
+      io.to(roomCode).emit("players:update", getPlayerList(room));
     }
 
-    if (room.host === socket.id && room.players.length > 0) {
-      room.host = room.players[0].id;
-    }
+    // الانتظار 45 ثانية قبل حذف اللاعب أو إغلاق الغرفة
+    const timerId = setTimeout(() => {
+      const currentRoom = rooms.get(roomCode);
+      if (!currentRoom) return;
 
-    io.to(roomCode).emit("players:update", getPlayerList(room));
+      currentRoom.players = currentRoom.players.filter((p) => p.id !== socket.id);
+
+      if (currentRoom.players.length === 0 && (!currentRoom.spectators || currentRoom.spectators.length === 0)) {
+        rooms.delete(roomCode);
+      } else {
+        if (currentRoom.host === socket.id && currentRoom.players.length > 0) {
+          currentRoom.host = currentRoom.players[0].id;
+        }
+        io.to(roomCode).emit("players:update", getPlayerList(currentRoom));
+      }
+      roomCleanups.delete(socket.id);
+    }, 45000);
+
+    roomCleanups.set(socket.id, timerId);
   });
 });
 
