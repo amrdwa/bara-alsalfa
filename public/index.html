@@ -15,7 +15,6 @@
       font-family: Arial, sans-serif;
       color: white;
 
-      /* عرض الصورة بحجم مناسب بدون قص وبشكل واضح */
       background-color: #000000;
       background-image: url('https://i.ibb.co/0jFwPT4p/Gemini-Generated-Image-wuqizwuqizwuqizw.png');
       background-repeat: no-repeat;
@@ -25,7 +24,6 @@
 
     .container {
       width: min(92%, 520px);
-      /* تم إلغاء Blur لتبقى صورة الشماغ والشخصية واضحة خلف اللعبة */
       background: rgba(0, 0, 0, 0.72);
       border: 1px solid rgba(255, 255, 255, 0.15);
       border-radius: 25px;
@@ -356,6 +354,20 @@
     let isHost = false;
     let isSpectator = false;
     let allPlayersList = [];
+
+    // طلب القائمة المحدثة فور رجوع المستخدم للمتصفح من التطبيقات الأخرى
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && currentRoom) {
+        socket.emit("request-players");
+      }
+    });
+
+    // أيضاً في حال إيقاف مؤقت وسريع لشبكة الجوال ثم إعادة الاتصال
+    socket.on("connect", () => {
+      if (currentRoom) {
+        socket.emit("request-players");
+      }
+    });
 
     function showScreen(screen) {
       home.classList.add("hidden");
