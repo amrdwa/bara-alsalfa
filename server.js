@@ -6,8 +6,8 @@ const path = require("path");
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  pingTimeout: 30000,
-  pingInterval: 10000
+  pingTimeout: 60000,
+  pingInterval: 15000
 });
 
 const PORT = process.env.PORT || 3000;
@@ -16,7 +16,6 @@ const OWNER_PIN = "a********@#";
 app.use(express.static(path.join(__dirname, "public")));
 
 const rooms = new Map();
-// كائن لتخزين مؤقتات الانتظار عند قطع اتصال اللاعبين
 const roomCleanups = new Map();
 
 const animals = [
@@ -47,6 +46,15 @@ function getPlayerList(room) {
 }
 
 io.on("connection", (socket) => {
+
+  // طلب قائمة اللاعبين يدوياً (مفيد جداً عند عودة الجوال من الخفاء)
+  socket.on("request-players", () => {
+    if (socket.roomCode && rooms.has(socket.roomCode)) {
+      const room = rooms.get(socket.roomCode);
+      socket.emit("players:update", getPlayerList(room));
+    }
+  });
+
   socket.on("create-room", ({ name, pin }, callback) => {
     if (!name || !name.trim()) return callback({ success: false, message: "اكتب اسمك أولًا" });
     if (pin !== OWNER_PIN) return callback({ success: false, message: "❌ فقط المالك يستطيع إنشاء غرف جديدة!" });
@@ -85,7 +93,7 @@ io.on("connection", (socket) => {
     if (room.started) return callback({ success: false, message: "اللعبة بدأت بالفعل" });
     if (room.players.length >= 7) return callback({ success: false, message: "الغرفة ممتلئة (حد أقصى 7)" });
 
-    const alreadyName = room.players.some((p) => p.name.toLowerCase() === name.trim().toLowerCase());
+    const alreadyName = room.players.some((p) => p.name.toLowerCase() === name.trim().toLowerCase() && p.isConnected);
     if (alreadyName) return callback({ success: false, message: "هذا الاسم مستخدم داخل الغرفة" });
 
     const player = { id: socket.id, name: name.trim(), score: 0, isMuted: false, ready: false, isConnected: true };
@@ -255,7 +263,6 @@ io.on("connection", (socket) => {
     if (typeof callback === "function") callback({ success: true });
   });
 
-  // منطق المغادرة المؤقتة لتفادي إغلاق الغرفة أثناء التبديل بين التطبيقات
   socket.on("disconnect", () => {
     const roomCode = socket.roomCode;
     if (!roomCode) return;
@@ -274,7 +281,6 @@ io.on("connection", (socket) => {
       io.to(roomCode).emit("players:update", getPlayerList(room));
     }
 
-    // الانتظار 45 ثانية قبل حذف اللاعب أو إغلاق الغرفة
     const timerId = setTimeout(() => {
       const currentRoom = rooms.get(roomCode);
       if (!currentRoom) return;
@@ -285,12 +291,13 @@ io.on("connection", (socket) => {
         rooms.delete(roomCode);
       } else {
         if (currentRoom.host === socket.id && currentRoom.players.length > 0) {
-          currentRoom.host = currentRoom.players[0].id;
+          const nextHost = currentRoom.players.find(p => p.isConnected) || currentRoom.players[0];
+          if (nextHost) currentRoom.host = nextHost.id;
         }
         io.to(roomCode).emit("players:update", getPlayerList(currentRoom));
       }
       roomCleanups.delete(socket.id);
-    }, 45000);
+    }, 120000);
 
     roomCleanups.set(socket.id, timerId);
   });
