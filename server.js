@@ -47,11 +47,44 @@ function getPlayerList(room) {
 
 io.on("connection", (socket) => {
 
-  // طلب قائمة اللاعبين يدوياً (مفيد جداً عند عودة الجوال من الخفاء)
+  // طلب مباشر لتحديث القائمة (حل مشكلة النوم في الخلفية)
   socket.on("request-players", () => {
     if (socket.roomCode && rooms.has(socket.roomCode)) {
       const room = rooms.get(socket.roomCode);
       socket.emit("players:update", getPlayerList(room));
+    }
+  });
+
+  // إعادة المزامنة في حال تغير Socket ID أثناء فتح التطبيقات الأخرى
+  socket.on("rejoin-room", ({ name, roomCode }, callback) => {
+    if (!name || !roomCode) return callback({ success: false });
+
+    const room = rooms.get(roomCode);
+    if (!room) return callback({ success: false, message: "الغرفة غير موجودة" });
+
+    const existingPlayer = room.players.find(p => p.name.toLowerCase() === name.trim().toLowerCase());
+
+    if (existingPlayer) {
+      if (roomCleanups.has(existingPlayer.id)) {
+        clearTimeout(roomCleanups.get(existingPlayer.id));
+        roomCleanups.delete(existingPlayer.id);
+      }
+
+      existingPlayer.id = socket.id;
+      existingPlayer.isConnected = true;
+
+      socket.join(roomCode);
+      socket.roomCode = roomCode;
+      socket.playerName = name.trim();
+
+      if (room.hostName === name.trim()) {
+        room.host = socket.id;
+      }
+
+      callback({ success: true, isHost: room.host === socket.id });
+      io.to(roomCode).emit("players:update", getPlayerList(room));
+    } else {
+      callback({ success: false, message: "لم يتم العثور على اللاعب" });
     }
   });
 
