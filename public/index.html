@@ -355,18 +355,42 @@
     let isSpectator = false;
     let allPlayersList = [];
 
-    // طلب القائمة المحدثة فور رجوع المستخدم للمتصفح من التطبيقات الأخرى
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible" && currentRoom) {
+    function saveSession(name, code, hostStatus) {
+      sessionStorage.setItem("p_name", name);
+      sessionStorage.setItem("p_room", code);
+      sessionStorage.setItem("p_isHost", hostStatus ? "true" : "false");
+    }
+
+    function syncPlayersState() {
+      const savedName = sessionStorage.getItem("p_name");
+      const savedRoom = sessionStorage.getItem("p_room");
+
+      if (savedName && savedRoom) {
+        socket.emit("rejoin-room", { name: savedName, roomCode: savedRoom }, (res) => {
+          if (res.success) {
+            currentRoom = savedRoom;
+            isHost = res.isHost;
+            roomCode.textContent = currentRoom;
+            if (isHost) {
+              hostControls.classList.remove("hidden");
+              hostVoteBtn.classList.remove("hidden");
+              hostForceStartBtn.classList.remove("hidden");
+            }
+          }
+        });
+      } else if (currentRoom) {
         socket.emit("request-players");
+      }
+    }
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        syncPlayersState();
       }
     });
 
-    // أيضاً في حال إيقاف مؤقت وسريع لشبكة الجوال ثم إعادة الاتصال
     socket.on("connect", () => {
-      if (currentRoom) {
-        socket.emit("request-players");
-      }
+      syncPlayersState();
     });
 
     function showScreen(screen) {
@@ -407,6 +431,7 @@
         if (!res.success) return homeMessage.textContent = res.message;
         currentRoom = res.roomCode;
         isHost = true;
+        saveSession(name, currentRoom, true);
         roomCode.textContent = currentRoom;
         hostControls.classList.remove("hidden");
         hostVoteBtn.classList.remove("hidden");
@@ -424,6 +449,7 @@
         if (!res.success) return homeMessage.textContent = res.message;
         currentRoom = res.roomCode;
         isHost = res.isHost;
+        saveSession(name, currentRoom, isHost);
         roomCode.textContent = currentRoom;
         if (isHost) {
           hostControls.classList.remove("hidden");
